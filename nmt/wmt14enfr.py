@@ -54,7 +54,7 @@ def prepare_data(seqs_x, seqs_y, maxlen=None, n_words_src=30000, n_words=30000):
     y = numpy.zeros((maxlen_y, n_samples)).astype('int64')
     x_mask = numpy.zeros((maxlen_x, n_samples)).astype('float32')
     y_mask = numpy.zeros((maxlen_y, n_samples)).astype('float32')
-    for idx, [s_x, s_y] in enumerate(zip(seqs_x,seqs_y)):
+    for idx, [s_x, s_y] in enumerate(zip(seqs_x, seqs_y)):
         s_x[numpy.where(s_x >= n_words_src-1)] = 1
         s_y[numpy.where(s_y >= n_words-1)] = 1
         x[:lengths_x[idx],idx] = s_x
@@ -69,8 +69,8 @@ def load_data(batch_size=128):
     Loads the dataset
     '''
 
-    path_src = '/data/lisatmp3/chokyun/wmt14/parallel-corpus/en-fr/parallel.en.shuf.h5'
-    path_trg = '/data/lisatmp3/chokyun/wmt14/parallel-corpus/en-fr/parallel.fr.shuf.h5'
+    path_src = '../data/vocab_and_data_small_europarl_v7_enfr/bin_test.fr.h5'
+    path_trg = '../data/vocab_and_data_small_europarl_v7_enfr/bin_test.en.h5'
 
     #############
     # LOAD DATA #
@@ -83,5 +83,3 @@ def load_data(batch_size=128):
     test = None
 
     return train, valid, test
-
-
