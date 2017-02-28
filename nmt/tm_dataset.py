@@ -94,6 +94,7 @@ class PytablesBitextFetcher(threading.Thread):
                 target_table.close()
                 return
 
+
 class PytablesBitextIterator(object):
 
     def __init__(self,
@@ -138,4 +139,3 @@ class PytablesBitextIterator(object):
             raise StopIteration
         self.next_offset = batch[0]
         return batch[1], batch[2]
-

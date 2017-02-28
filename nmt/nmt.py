@@ -1758,6 +1758,8 @@ def train(dim_word=100, # word vector dimensionality
         with open('%s.pkl'%saveto, 'rb') as f:
             models_options = pkl.load(f)
     #import ipdb; ipdb.set_trace()
+
+
     print 'Loading data'
     load_data, prepare_data = get_dataset(dataset)
     train, valid, test = load_data(batch_size=batch_size)
@@ -1774,7 +1776,7 @@ def train(dim_word=100, # word vector dimensionality
                                                                        model_options)
     inps = [x, x_mask, y, y_mask]
 
-    #theano.printing.debugprint(cost.mean(), file=open('cost.txt', 'w'))
+    # theano.printing.debugprint(cost.mean(), file=open('cost.txt', 'w'))
 
     print 'Buliding sampler'
     f_init, f_next = build_sampler(tparams, model_options, trng)
@@ -1796,7 +1798,7 @@ def train(dim_word=100, # word vector dimensionality
 
     if alpha_c > 0. and not model_options['decoder'].endswith('simple'):
         alpha_c = theano.shared(numpy.float32(alpha_c), name='alpha_c')
-        alpha_reg = alpha_c * ((tensor.cast(y_mask.sum(0)//x_mask.sum(0), 'float32')[:,None]-
+        alpha_reg = alpha_c * ((tensor.cast(y_mask.sum(0) // x_mask.sum(0), 'float32')[:, None] -
                                 opt_ret['dec_alphas'].sum(0))**2).sum(1).mean()
         cost += alpha_reg
 
@@ -1837,8 +1839,9 @@ def train(dim_word=100, # word vector dimensionality
 
     print 'Optimization'
 
+    # FIXME: review this bit to make sure it is loading properly
     history_errs = []
-    # reload history
+    # Reload history
     if reload_ and os.path.exists(saveto):
         history_errs = list(numpy.load(saveto)['history_errs'])
     best_p = None
@@ -1853,9 +1856,14 @@ def train(dim_word=100, # word vector dimensionality
 
     uidx = 0
     estop = False
+
+    #####################
+    # Main Training Loop
+    #####################
+
     for eidx in xrange(max_epochs):
         n_samples = 0
-        #import ipdb; ipdb.set_trace()
+        # import ipdb; ipdb.set_trace()
         train.start()
         for x, y in train:
             n_samples += len(x)
@@ -1886,49 +1894,49 @@ def train(dim_word=100, # word vector dimensionality
             if numpy.mod(uidx, saveFreq) == 0:
                 print 'Saving...',
 
-                #import ipdb; ipdb.set_trace()
+                # import ipdb; ipdb.set_trace()
 
-                #if best_p != None:
-                #    params = best_p
-                #else:
+                # if best_p != None:
+                #     params = best_p
+                # else:
                 params = unzip(tparams)
 
                 saveto_list = saveto.split('/')
                 saveto_list[-1] = 'epoch' + str(eidx) + '_' + 'nbUpd' + str(uidx) + '_' + saveto_list[-1]
                 saveName = '/'.join(saveto_list)
                 numpy.savez(saveName, history_errs=history_errs, **params)
-                pkl.dump(model_options, open('%s.pkl'%saveName, 'wb'))
+                pkl.dump(model_options, open('%s.pkl' % saveName, 'wb'))
                 print 'Done'
 
             if numpy.mod(uidx, sampleFreq) == 0:
                 # FIXME: random selection?
-                for jj in xrange(numpy.minimum(5,x.shape[1])):
+                for jj in xrange(numpy.minimum(5, x.shape[1])):
                     stochastic = False
-                    sample, score = gen_sample(tparams, f_init, f_next, x[:,jj][:,None], 
-                                               model_options, trng=trng, k=1, maxlen=30, 
+                    sample, score = gen_sample(tparams, f_init, f_next, x[:, jj][:, None],
+                                               model_options, trng=trng, k=1, maxlen=30,
                                                stochastic=stochastic, argmax=True)
-                    print 'Source ',jj,': ',
-                    for vv in x[:,jj]:
+                    print 'Source ', jj, ': ',
+                    for vv in x[:, jj]:
                         if vv == 0:
                             break
                         if vv in word_idict_src:
-                            print word_idict_src[vv], 
+                            print word_idict_src[vv],
                         else:
                             print 'UNK',
                     print
-                    print 'Truth ',jj,' : ',
-                    for vv in y[:,jj]:
+                    print 'Truth ', jj, ' : ',
+                    for vv in y[:, jj]:
                         if vv == 0:
                             break
                         if vv in word_idict:
-                            print word_idict[vv], 
+                            print word_idict[vv],
                         else:
                             print 'UNK',
                     print
                     if model_options['hiero']:
-                        betas = f_beta(x[:,jj][:,None], x_mask[:,jj][:,None])
-                        print 'Validity ', jj,': ',
-                        for vv,bb in zip(y[:,jj],betas[:,0]):
+                        betas = f_beta(x[:, jj][:, None], x_mask[:, jj][:, None])
+                        print 'Validity ', jj, ': ',
+                        for vv, bb in zip(y[:, jj], betas[:, 0]):
                             if vv == 0:
                                 break
                             print bb,
@@ -1943,7 +1951,7 @@ def train(dim_word=100, # word vector dimensionality
                         if vv == 0:
                             break
                         if vv in word_idict:
-                            print word_idict[vv], 
+                            print word_idict[vv],
                         else:
                             print 'UNK',
                     print
@@ -1953,23 +1961,23 @@ def train(dim_word=100, # word vector dimensionality
                 train_err = 0
                 valid_err = 0
                 test_err = 0
-                #for _, tindex in kf:
-                #    x, mask = prepare_data(train[0][train_index])
-                #    train_err += (f_pred(x, mask) == train[1][tindex]).sum()
-                #train_err = 1. - numpy.float32(train_err) / train[0].shape[0]
+                # for _, tindex in kf:
+                #     x, mask = prepare_data(train[0][train_index])
+                #     train_err += (f_pred(x, mask) == train[1][tindex]).sum()
+                # train_err = 1. - numpy.float32(train_err) / train[0].shape[0]
 
-                #train_err = pred_error(f_pred, prepare_data, train, kf)
-                if valid != None:
+                # train_err = pred_error(f_pred, prepare_data, train, kf)
+                if valid is not None:
                     valid_err = pred_probs(f_log_probs, prepare_data, model_options, valid).mean()
-                if test != None:
+                if test is not None:
                     test_err = pred_probs(f_log_probs, prepare_data, model_options, test).mean()
 
                 history_errs.append([valid_err, test_err])
 
-                if uidx == 0 or valid_err <= numpy.array(history_errs)[:,0].min():
+                if uidx == 0 or valid_err <= numpy.array(history_errs)[:, 0].min():
                     best_p = unzip(tparams)
                     bad_counter = 0
-                if len(history_errs) > patience and valid_err >= numpy.array(history_errs)[:-patience,0].min():
+                if len(history_errs) > patience and valid_err >= numpy.array(history_errs)[:-patience, 0].min():
                     bad_counter += 1
                     if bad_counter > patience:
                         print 'Early Stop!'
@@ -1978,11 +1986,11 @@ def train(dim_word=100, # word vector dimensionality
 
                 print 'Train ', train_err, 'Valid ', valid_err, 'Test ', test_err
 
-                print 'Seen %d samples'%n_samples
+                print 'Seen %d samples' % n_samples
 
-        #print 'Epoch ', eidx, 'Update ', uidx, 'Train ', train_err, 'Valid ', valid_err, 'Test ', test_err
+        # print 'Epoch ', eidx, 'Update ', uidx, 'Train ', train_err, 'Valid ', valid_err, 'Test ', test_err
 
-        #print 'Seen %d samples'%n_samples
+        # print 'Seen %d samples'%n_samples
 
         if estop:
             break
@@ -1995,20 +2003,19 @@ def train(dim_word=100, # word vector dimensionality
     valid_err = 0
     test_err = 0
     #train_err = pred_error(f_pred, prepare_data, train, kf)
-    if valid != None:
+    if valid is not None:
         valid_err = pred_probs(f_log_probs, prepare_data, model_options, valid).mean()
-    if test != None:
+    if test is not None:
         test_err = pred_probs(f_log_probs, prepare_data, model_options, test).mean()
-
 
     print 'Train ', train_err, 'Valid ', valid_err, 'Test ', test_err
 
-    if best_p != None:
+    if best_p is not None:
         params = copy.copy(best_p)
     else:
         params = unzip(tparams)
-    numpy.savez(saveto, zipped_params=best_p, train_err=train_err, 
-                valid_err=valid_err, test_err=test_err, history_errs=history_errs, 
+    numpy.savez(saveto, zipped_params=best_p, train_err=train_err,
+                valid_err=valid_err, test_err=test_err, history_errs=history_errs,
                 **params)
 
     return train_err, valid_err, test_err

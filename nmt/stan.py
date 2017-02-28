@@ -66,10 +66,11 @@ def prepare_data(seqs_x, seqs_y, maxlen=None, n_words_src=30000, n_words=30000):
     return x, x_mask, y, y_mask
 
 def load_data(batch_size=128):
-    ''' 
+    '''
     Loads the dataset
     '''
 
+    path_src = '../data/vocab_and_data_small_europarl_v7_enfr/bin_'
     path_src = './stan/vocab_and_data_sub_europarl/binarized_sub_europarl-v7.fr-en.en.h5'
     path_trg = './stan/vocab_and_data_sub_europarl/binarized_sub_europarl-v7.fr-en.fr.h5'
 

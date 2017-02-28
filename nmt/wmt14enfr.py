@@ -7,7 +7,7 @@ __authors__ = ("Razvan Pascanu "
                "KyungHyun Cho ")
 __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
-import numpy 
+import numpy
 
 import os, gc
 

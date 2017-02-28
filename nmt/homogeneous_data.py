@@ -1,9 +1,7 @@
 import numpy
-
 import itertools
 import operator
-
-from tm_dataset import PytablesBitextIterator 
+from tm_dataset import PytablesBitextIterator
 
 class HomogenousData(PytablesBitextIterator):
 
@@ -24,7 +22,7 @@ class HomogenousData(PytablesBitextIterator):
                 except StopIteration:
                     end_of_iter = True
                     break
-                if dx == None or dy == None:
+                if dx is None or dy is None:
                     break
                 x += dx
                 y += dy
@@ -53,4 +51,3 @@ class HomogenousData(PytablesBitextIterator):
             raise StopIteration
 
         return batch[0], batch[1]
-
