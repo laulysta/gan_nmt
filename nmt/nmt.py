@@ -24,6 +24,7 @@ import openmt15zhen
 import trans_enhi
 import stan
 
+theano.config.floatX = 'float32'
 profile = False
 
 # datasets: 'name', 'load_data: returns iterator', 'prepare_data: some preprocessing'
@@ -33,6 +34,21 @@ datasets = {'wmt14enfr': (wmt14enfr.load_data, wmt14enfr.prepare_data),
             'trans_enhi': (trans_enhi.load_data, trans_enhi.prepare_data),
             'stan': (stan.load_data, stan.prepare_data),
             }
+
+# layers: 'name': ('parameter initializer', 'feedforward')
+layers = {'ff': ('param_init_fflayer', 'fflayer'),
+          'ff_nb': ('param_init_fflayer_nb', 'fflayer_nb'),
+          'lstm': ('param_init_lstm', 'lstm_layer'),
+          'lstm_cond': ('param_init_lstm_cond', 'lstm_cond_layer'),
+          'gru': ('param_init_gru', 'gru_layer'),
+          'gru_cond': ('param_init_gru_cond', 'gru_cond_layer'),
+          'gru_cond_simple': ('param_init_gru_cond_simple', 'gru_cond_simple_layer'),
+          'gru_hiero': ('param_init_gru_hiero', 'gru_hiero_layer'),
+          'rnn': ('param_init_rnn', 'rnn_layer'),
+          'rnn_cond': ('param_init_rnn_cond', 'rnn_cond_layer'),
+          'rnn_hiero': ('param_init_rnn_hiero', 'rnn_hiero_layer'),
+          }
+
 
 def get_dataset(name):
     return datasets[name][0], datasets[name][1]
@@ -82,29 +98,18 @@ def load_params(path, params):
 
     return params
 
-# layers: 'name': ('parameter initializer', 'feedforward')
-layers = {'ff': ('param_init_fflayer', 'fflayer'),
-          'ff_nb': ('param_init_fflayer_nb', 'fflayer_nb'),
-          'lstm': ('param_init_lstm', 'lstm_layer'),
-          'lstm_cond': ('param_init_lstm_cond', 'lstm_cond_layer'),
-          'gru': ('param_init_gru', 'gru_layer'),
-          'gru_cond': ('param_init_gru_cond', 'gru_cond_layer'),
-          'gru_cond_simple': ('param_init_gru_cond_simple', 'gru_cond_simple_layer'),
-          'gru_hiero': ('param_init_gru_hiero', 'gru_hiero_layer'),
-          'rnn': ('param_init_rnn', 'rnn_layer'),
-          'rnn_cond': ('param_init_rnn_cond', 'rnn_cond_layer'),
-          'rnn_hiero': ('param_init_rnn_hiero', 'rnn_hiero_layer'),
-          }
 
 def get_layer(name):
     fns = layers[name]
     return (eval(fns[0]), eval(fns[1]))
+
 
 # some utilities
 def ortho_weight(ndim):
     W = numpy.random.randn(ndim, ndim)
     u, s, v = numpy.linalg.svd(W)
     return u.astype('float32')
+
 
 def norm_weight(nin,nout=None, scale=0.01, ortho=True):
     if nout == None:
@@ -115,11 +120,14 @@ def norm_weight(nin,nout=None, scale=0.01, ortho=True):
         W = scale * numpy.random.randn(nin, nout)
     return W.astype('float32')
 
+
 def tanh(x):
     return tensor.tanh(x)
 
+
 def linear(x):
     return x
+
 
 def concatenate(tensor_list, axis=0):
     """
@@ -165,6 +173,7 @@ def concatenate(tensor_list, axis=0):
 
     return out
 
+
 # feedforward layer: affine transformation + point-wise nonlinearity
 def param_init_fflayer(options, params, prefix='ff', nin=None, nout=None, ortho=True):
     if nin == None:
@@ -176,8 +185,10 @@ def param_init_fflayer(options, params, prefix='ff', nin=None, nout=None, ortho=
 
     return params
 
+
 def fflayer(tparams, state_below, options, prefix='rconv', activ='lambda x: tensor.tanh(x)', **kwargs):
     return eval(activ)(tensor.dot(state_below, tparams[_p(prefix,'W')])+tparams[_p(prefix,'b')])
+
 
 # feedforward layer with no bias: affine transformation + point-wise nonlinearity
 def param_init_fflayer_nb(options, params, prefix='ff_nb', nin=None, nout=None, ortho=True):
@@ -189,8 +200,10 @@ def param_init_fflayer_nb(options, params, prefix='ff_nb', nin=None, nout=None, 
 
     return params
 
+
 def fflayer_nb(tparams, state_below, options, prefix='ff_nb', activ='lambda x: tensor.tanh(x)', **kwargs):
-    return eval(activ)(tensor.dot(state_below, tparams[_p(prefix,'W')]))
+    return eval(activ)(tensor.dot(state_below, tparams[_p(prefix, 'W')]))
+
 
 # RNN layer
 def param_init_rnn(options, params, prefix='rnn', nin=None, dim=None):
@@ -205,6 +218,7 @@ def param_init_rnn(options, params, prefix='rnn', nin=None, dim=None):
     params[_p(prefix,'bx')] = numpy.zeros((dim,)).astype('float32')
 
     return params
+
 
 def rnn_layer(tparams, state_below, options, prefix='rnn', mask=None, **kwargs):
     nsteps = state_below.shape[0]
@@ -246,6 +260,7 @@ def rnn_layer(tparams, state_below, options, prefix='rnn', mask=None, **kwargs):
     rval = [rval]
     return rval
 
+
 # Conditional RNN layer with Attention
 def param_init_rnn_cond(options, params, prefix='rnn_cond', nin=None, dim=None, dimctx=None):
     if nin == None:
@@ -285,9 +300,10 @@ def param_init_rnn_cond(options, params, prefix='rnn_cond', nin=None, dim=None, 
 
     return params
 
-def rnn_cond_layer(tparams, state_below, options, prefix='rnn', 
-                   mask=None, context=None, one_step=False, 
-                   init_memory=None, init_state=None, 
+
+def rnn_cond_layer(tparams, state_below, options, prefix='rnn',
+                   mask=None, context=None, one_step=False,
+                   init_memory=None, init_state=None,
                    context_mask=None,
                    **kwargs):
 
@@ -648,7 +664,7 @@ def gru_cond_simple_layer(tparams, state_below, options, prefix='gru',
         n_samples = 1
 
     # mask
-    if mask == None:
+    if mask is None:
         mask = tensor.alloc(1., state_below.shape[0], 1)
 
     dim = tparams[_p(prefix, 'Ux')].shape[1]
@@ -712,51 +728,51 @@ def gru_cond_simple_layer(tparams, state_below, options, prefix='gru',
                                     strict=True)
     return rval
 
+
 # Conditional GRU layer with Attention
 def param_init_gru_cond(options, params, prefix='gru_cond', nin=None, dim=None, dimctx=None):
-    if nin == None:
+    if nin is None:
         nin = options['dim']
-    if dim == None:
+    if dim is None:
         dim = options['dim']
-    if dimctx == None:
+    if dimctx is None:
         dimctx = options['dim']
 
     params = param_init_gru_nonlin(options, params, prefix, nin=nin, dim=dim)
 
     # context to LSTM
-    Wc = norm_weight(dimctx,dim*2)
-    params[_p(prefix,'Wc')] = Wc
+    Wc = norm_weight(dimctx, dim * 2)
+    params[_p(prefix, 'Wc')] = Wc
 
-    Wcx = norm_weight(dimctx,dim)
-    params[_p(prefix,'Wcx')] = Wcx
-    
-    
+    Wcx = norm_weight(dimctx, dim)
+    params[_p(prefix, 'Wcx')] = Wcx
 
     # attention: combined -> hidden
-    W_comb_att = norm_weight(dim,dimctx)
-    params[_p(prefix,'W_comb_att')] = W_comb_att
+    W_comb_att = norm_weight(dim, dimctx)
+    params[_p(prefix, 'W_comb_att')] = W_comb_att
 
     # attention: context -> hidden
     Wc_att = norm_weight(dimctx)
-    params[_p(prefix,'Wc_att')] = Wc_att
+    params[_p(prefix, 'Wc_att')] = Wc_att
 
     # attention: hidden bias
     b_att = numpy.zeros((dimctx,)).astype('float32')
-    params[_p(prefix,'b_att')] = b_att
+    params[_p(prefix, 'b_att')] = b_att
 
     # attention: 
-    U_att = norm_weight(dimctx,1)
-    params[_p(prefix,'U_att')] = U_att
+    U_att = norm_weight(dimctx, 1)
+    params[_p(prefix, 'U_att')] = U_att
     c_att = numpy.zeros((1,)).astype('float32')
     params[_p(prefix, 'c_tt')] = c_att
 
     return params
 
-def gru_cond_layer(tparams, state_below, options, prefix='gru', 
-                    mask=None, context=None, one_step=False, 
-                    init_memory=None, init_state=None, 
-                    context_mask=None,
-                    **kwargs):
+
+def gru_cond_layer(tparams, state_below, options, prefix='gru',
+                   mask=None, context=None, one_step=False,
+                   init_memory=None, init_state=None,
+                   context_mask=None,
+                   **kwargs):
 
     assert context, 'Context must be provided'
 
@@ -770,75 +786,77 @@ def gru_cond_layer(tparams, state_below, options, prefix='gru',
         n_samples = 1
 
     # mask
-    if mask == None:
+    if mask is None:
         mask = tensor.alloc(1., state_below.shape[0], 1)
 
     dim = tparams[_p(prefix, 'Wcx')].shape[1]
 
     # initial/previous state
-    if init_state == None:
+    if init_state is None:
         init_state = tensor.alloc(0., n_samples, dim)
 
-    # projected context 
+    # projected context
     assert context.ndim == 3, 'Context must be 3-d: #annotation x #sample x dim'
-    pctx_ = tensor.dot(context, tparams[_p(prefix,'Wc_att')]) + tparams[_p(prefix,'b_att')]
-        
+    pctx_ = tensor.dot(context, tparams[_p(prefix, 'Wc_att')]) + tparams[_p(prefix, 'b_att')]
+
     def _slice(_x, n, dim):
         if _x.ndim == 3:
-            return _x[:, :, n*dim:(n+1)*dim]
-        return _x[:, n*dim:(n+1)*dim]
+            return _x[:, :, n * dim:(n + 1) * dim]
+        return _x[:, n * dim:(n + 1) * dim]
 
     # projected x
     state_belowx = tensor.dot(state_below, tparams[_p(prefix, 'Wx')]) + tparams[_p(prefix, 'bx')]
     state_below_ = tensor.dot(state_below, tparams[_p(prefix, 'W')]) + tparams[_p(prefix, 'b')]
     #state_belowc = tensor.dot(state_below, tparams[_p(prefix, 'Wi_att')])
     #import ipdb; ipdb.set_trace()
+
     def _step_slice(m_, x_, xx_, h_, ctx_, alpha_, pctx_, cc_,
                     U, Wc, W_comb_att, U_att, c_tt, Ux, Wcx, U_nl, Ux_nl, b_nl, bx_nl):
+
         preact1 = tensor.dot(h_, U)
         preact1 += x_
         preact1 = tensor.nnet.sigmoid(preact1)
 
-        r1 = _slice(preact1, 0, dim)
-        u1 = _slice(preact1, 1, dim)
+        r1 = _slice(preact1, 0, dim)   # (4)
+        u1 = _slice(preact1, 1, dim)   # (5)
 
         preactx1 = tensor.dot(h_, Ux)
         preactx1 *= r1
         preactx1 += xx_
 
-        h1 = tensor.tanh(preactx1)
+        h1 = tensor.tanh(preactx1)  # (3)
 
         h1 = u1 * h_ + (1. - u1) * h1
-        h1 = m_[:,None] * h1 + (1. - m_)[:,None] * h_
-        
+        h1 = m_[:, None] * h1 + (1. - m_)[:, None] * h_     # (2)
+
         # attention
         pstate_ = tensor.dot(h1, W_comb_att)
-        pctx__ = pctx_ + pstate_[None,:,:] 
-        #pctx__ += xc_
+        pctx__ = pctx_ + pstate_[None, :, :]
+        # pctx__ += xc_
         pctx__ = tensor.tanh(pctx__)
-        alpha = tensor.dot(pctx__, U_att)+c_tt
-        alpha = alpha.reshape([alpha.shape[0], alpha.shape[1]])
+        alpha = tensor.dot(pctx__, U_att) + c_tt
+        alpha = alpha.reshape([alpha.shape[0], alpha.shape[1]])     # (8)
         alpha = tensor.exp(alpha)
         if context_mask:
             alpha = alpha * context_mask
-        alpha = alpha / alpha.sum(0, keepdims=True)
-        ctx_ = (cc_ * alpha[:,:,None]).sum(0) # current context
+        alpha = alpha / alpha.sum(0, keepdims=True)     # (7)
+        ctx_ = (cc_ * alpha[:, :, None]).sum(0)     # (6) current context
 
-        preact2 = tensor.dot(h1, U_nl)+b_nl
+        preact2 = tensor.dot(h1, U_nl) + b_nl
         preact2 += tensor.dot(ctx_, Wc)
         preact2 = tensor.nnet.sigmoid(preact2)
 
         r2 = _slice(preact2, 0, dim)
         u2 = _slice(preact2, 1, dim)
 
-        preactx2 = tensor.dot(h1, Ux_nl)+bx_nl
+        preactx2 = tensor.dot(h1, Ux_nl) + bx_nl
         preactx2 *= r2
         preactx2 += tensor.dot(ctx_, Wcx)
 
         h2 = tensor.tanh(preactx2)
 
         h2 = u2 * h1 + (1. - u2) * h2
-        h2 = m_[:,None] * h2 + (1. - m_)[:,None] * h1
+        h2 = m_[:, None] * h2 + (1. - m_)[:, None] * h1
 
         return h2, ctx_, alpha.T #, pstate_, preact, preactx, r, u
 
@@ -848,10 +866,10 @@ def gru_cond_layer(tparams, state_below, options, prefix='gru',
 
     shared_vars = [tparams[_p(prefix, 'U')],
                    tparams[_p(prefix, 'Wc')],
-                   tparams[_p(prefix,'W_comb_att')],
-                   tparams[_p(prefix,'U_att')], 
-                   tparams[_p(prefix, 'c_tt')], 
-                   tparams[_p(prefix, 'Ux')], 
+                   tparams[_p(prefix, 'W_comb_att')],
+                   tparams[_p(prefix, 'U_att')],
+                   tparams[_p(prefix, 'c_tt')],
+                   tparams[_p(prefix, 'Ux')],
                    tparams[_p(prefix, 'Wcx')],
                    tparams[_p(prefix, 'U_nl')],
                    tparams[_p(prefix, 'Ux_nl')],
@@ -859,17 +877,14 @@ def gru_cond_layer(tparams, state_below, options, prefix='gru',
                    tparams[_p(prefix, 'bx_nl')]]
 
     if one_step:
-        rval = _step(*(seqs+[init_state, None, None, pctx_, context]+shared_vars))
+        rval = _step( * (seqs + [init_state, None, None, pctx_, context] + shared_vars))
     else:
-        rval, updates = theano.scan(_step, 
+        rval, updates = theano.scan(_step,
                                     sequences=seqs,
-                                    outputs_info = [init_state, 
-                                                    tensor.alloc(0., n_samples, context.shape[2]),
-                                                    tensor.alloc(0., n_samples, context.shape[0])],
-                                                    #None, None, None, 
-                                                    #None, None],
-                                    non_sequences=[pctx_,
-                                                   context]+shared_vars,
+                                    outputs_info=[init_state,
+                                                  tensor.alloc(0., n_samples, context.shape[2]),
+                                                  tensor.alloc(0., n_samples, context.shape[0])],
+                                    non_sequences=[pctx_, context] + shared_vars,
                                     name=_p(prefix, '_layers'),
                                     n_steps=nsteps,
                                     profile=profile,
@@ -1222,9 +1237,8 @@ def init_params(options):
     params['Wemb'] = norm_weight(options['n_words_src'], options['dim_word'])
     params['Wemb_dec'] = norm_weight(options['n_words'], options['dim_word'])
 
-   
-    # encoder: LSTM
-    params = get_layer(options['encoder'])[0](options, params, prefix='encoder', 
+    # Encoder
+    params = get_layer(options['encoder'])[0](options, params, prefix='encoder',
                                               nin=options['dim_word'], dim=options['dim'])
     ctxdim = options['dim']
     if not options['decoder'].endswith('simple'):
@@ -1253,6 +1267,7 @@ def init_params(options):
 
     return params
 
+
 # build a training model
 def build_model(tparams, options):
     opt_ret = dict()
@@ -1273,7 +1288,7 @@ def build_model(tparams, options):
     n_timesteps_trg = y.shape[0]
     n_samples = x.shape[1]
     src_lengths = x_mask.sum(axis=0)
-    
+
     emb = tparams['Wemb'][x.flatten()].reshape([n_timesteps, n_samples, options['dim_word']])
     proj = get_layer(options['encoder'])[1](tparams, emb, options,
                                             prefix='encoder',
@@ -1286,9 +1301,9 @@ def build_model(tparams, options):
         projr = get_layer(options['encoder'])[1](tparams, embr, options,
                                                  prefix='encoder_r',
                                                  mask=xr_mask)
-        ctx = concatenate([proj[0], projr[0][::-1]], axis=proj[0].ndim-1)
+        ctx = concatenate([proj[0], projr[0][::-1]], axis=proj[0].ndim - 1)
         if options['hiero']:
-            #ctx = tensor.dot(ctx, tparams['W_hiero'])
+            # ctx = tensor.dot(ctx, tparams['W_hiero'])
             rval = get_layer(options['hiero'])[1](tparams, ctx, options,
                                                   prefix='hiero',
                                                   context_mask=x_mask)
@@ -1298,24 +1313,27 @@ def build_model(tparams, options):
         # initial state/cell
         # ctx_mean = ctx.mean(0)
         # ctx_mean = (ctx * x_mask[:,:,None]).sum(0) / x_mask.sum(0)[:,None]
-        ctx_mean = concatenate([proj[0][-1],projr[0][-1]], axis=proj[0].ndim-2)
+        ctx_mean = concatenate([proj[0][-1], projr[0][-1]], axis=proj[0].ndim - 2)
+
     init_state = get_layer('ff')[1](tparams, ctx_mean, options, prefix='ff_state', activ='tanh')
     init_memory = None
+
     if options['encoder'] == 'lstm':
         init_memory = get_layer('ff')[1](tparams, ctx_mean, options, prefix='ff_memory', activ='tanh')
+
     # word embedding (target)
     emb = tparams['Wemb_dec'][y.flatten()].reshape([n_timesteps_trg, n_samples, options['dim_word']])
     emb_shifted = tensor.zeros_like(emb)
     emb_shifted = tensor.set_subtensor(emb_shifted[1:], emb[:-1])
     emb = emb_shifted
-    
+
 
     # decoder
-    proj = get_layer(options['decoder'])[1](tparams, emb, options, 
-                                            prefix='decoder', 
-                                            mask=y_mask, context=ctx, 
+    proj = get_layer(options['decoder'])[1](tparams, emb, options,
+                                            prefix='decoder',
+                                            mask=y_mask, context=ctx,
                                             context_mask=x_mask,
-                                            one_step=False, 
+                                            one_step=False,
                                             init_state=init_state,
                                             init_memory=init_memory)
     proj_h = proj[0]
@@ -1460,13 +1478,13 @@ def gen_sample(tparams, f_init, f_next, x, options, trng=None, k=1, maxlen=30,
     hyp_states = []
     if options['decoder'].startswith('lstm'):
         hyp_memories = []
-    
+
     ret = f_init(x)
     next_state = ret.pop(0)
     ctx0 = ret.pop(0)
     if options['decoder'].startswith('lstm'):
         next_memory = ret.pop(0)
-    
+
     next_w = -1 * numpy.ones((1,)).astype('int64')
 
     for ii in xrange(maxlen):
@@ -1720,7 +1738,7 @@ def train(dim_word=100, # word vector dimensionality
 
     # Model options
     model_options = locals().copy()
-    
+
     if dictionary:
         with open(dictionary, 'rb') as f:
             word_dict = pkl.load(f)
@@ -1752,11 +1770,8 @@ def train(dim_word=100, # word vector dimensionality
 
     tparams = init_tparams(params)
 
-    trng, use_noise, \
-          x, x_mask, y, y_mask, \
-          opt_ret, \
-          cost = \
-          build_model(tparams, model_options)
+    trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost = build_model(tparams,
+                                                                       model_options)
     inps = [x, x_mask, y, y_mask]
 
     #theano.printing.debugprint(cost.mean(), file=open('cost.txt', 'w'))
@@ -1790,7 +1805,7 @@ def train(dim_word=100, # word vector dimensionality
     f_cost = theano.function(inps, cost, profile=profile)
     print 'Done'
 
-    if model_options['hiero'] != None:
+    if model_options['hiero'] is not None:
         print 'Building f_beta...',
         f_beta = theano.function([x, x_mask], opt_ret['hiero_betas'], profile=profile)
         print 'Done'
@@ -1802,7 +1817,7 @@ def train(dim_word=100, # word vector dimensionality
     f_grad = theano.function(inps, grads, profile=profile)
     print 'Done'
 
-    #Cliping gradients
+    # Cliping gradients
     if clip_c > 0.:
         g2 = 0.
         for g in grads:
@@ -1816,7 +1831,7 @@ def train(dim_word=100, # word vector dimensionality
 
     lr = tensor.scalar(name='lr')
     print 'Building optimizers...',
-    #f_grad_shared, f_update = eval(optimizer)(lr, tparams, grads, inps, cost)
+    # f_grad_shared, f_update = eval(optimizer)(lr, tparams, grads, inps, cost)
     f_update = eval(optimizer)(lr, tparams, grads, inps, cost)
     print 'Done'
 
@@ -1830,11 +1845,11 @@ def train(dim_word=100, # word vector dimensionality
     bad_count = 0
 
     if validFreq == -1:
-        validFreq = len(train[0])/batch_size
+        validFreq = len(train[0]) / batch_size
     if saveFreq == -1:
-        saveFreq = len(train[0])/batch_size
+        saveFreq = len(train[0]) / batch_size
     if sampleFreq == -1:
-        sampleFreq = len(train[0])/batch_size
+        sampleFreq = len(train[0]) / batch_size
 
     uidx = 0
     estop = False
@@ -1847,17 +1862,17 @@ def train(dim_word=100, # word vector dimensionality
             uidx += 1
             use_noise.set_value(1.)
 
-            x, x_mask, y, y_mask = prepare_data(x, y, maxlen=maxlen, 
+            x, x_mask, y, y_mask = prepare_data(x, y, maxlen=maxlen,
                                                 n_words_src=n_words_src, n_words=n_words)
 
-            if x == None:
-                #print 'Minibatch with zero sample under length ', maxlen
+            if x is None:
+                # print 'Minibatch with zero sample under length ', maxlen
                 uidx -= 1
                 continue
 
             ud_start = time.time()
-            #cost = f_grad_shared(x, x_mask, y, y_mask)
-            #f_update(lrate)
+            # cost = f_grad_shared(x, x_mask, y, y_mask)
+            # f_update(lrate)
             cost = f_update(x, x_mask, y, y_mask, lrate)
             ud = time.time() - ud_start
 
