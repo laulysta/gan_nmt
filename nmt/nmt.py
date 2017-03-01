@@ -2051,4 +2051,4 @@ if __name__ == '__main__':
           use_dropout=False,
           reload_=False,
           correlation_coeff=0.1,
-          clip_c=0.)
+          clip_c=1.)
