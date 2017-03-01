@@ -2045,7 +2045,7 @@ if __name__ == '__main__':
           validFreq=1000,
           saveFreq=1000,
           sampleFreq=100,
-          dataset='wmt14enfr',
+          dataset='stan',
           dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
           dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
           use_dropout=False,
