@@ -2046,25 +2046,9 @@ if __name__ == '__main__':
           saveFreq=1000,
           sampleFreq=100,
           dataset='wmt14enfr',
-          dictionary = '../data/small_europarl_v7_enfr_txt/vocab.fr.pkl',
-          dictionary_src = '../data/small_europarl_v7_enfr_txt/vocab.en.pkl',
+          dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
+          dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
           use_dropout=False,
           reload_=False,
           correlation_coeff=0.1,
           clip_c=0.)
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
-
