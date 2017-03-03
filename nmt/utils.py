@@ -1,8 +1,9 @@
 import theano
 import theano.tensor as tensor
-from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 import pickle as pkl
 import numpy
+from collections import OrderedDict
+
 
 profile = False
 
