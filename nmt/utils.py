@@ -71,7 +71,7 @@ def ortho_weight(ndim):
 
 
 def norm_weight(nin,nout=None, scale=0.01, ortho=True):
-    if nout == None:
+    if nout is None:
         nout = nin
     if nout == nin and ortho:
         W = ortho_weight(nin)

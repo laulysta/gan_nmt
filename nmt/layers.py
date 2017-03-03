@@ -46,9 +46,9 @@ def dropout_layer(state_before, use_noise, trng):
 
 # feedforward layer: affine transformation + point-wise nonlinearity
 def param_init_fflayer(options, params, prefix='ff', nin=None, nout=None, ortho=True):
-    if nin == None:
+    if nin is None:
         nin = options['dim_proj']
-    if nout == None:
+    if nout is None:
         nout = options['dim_proj']
     params[prefix_append(prefix,'W')] = norm_weight(nin, nout, scale=0.01, ortho=ortho)
     params[prefix_append(prefix,'b')] = numpy.zeros((nout,)).astype('float32')
@@ -63,9 +63,9 @@ def fflayer(tparams, state_below, options, prefix='rconv', activ='lambda x: tens
 
 # feedforward layer with no bias: affine transformation + point-wise nonlinearity
 def param_init_fflayer_nb(options, params, prefix='ff_nb', nin=None, nout=None, ortho=True):
-    if nin == None:
+    if nin is None:
         nin = options['dim_proj']
-    if nout == None:
+    if nout is None:
         nout = options['dim_proj']
     params[prefix_append(prefix,'W')] = norm_weight(nin, nout, scale=0.01, ortho=ortho)
 
@@ -80,9 +80,9 @@ def fflayer_nb(tparams, state_below, options, prefix='ff_nb', activ='lambda x: t
 ###############
 # GRU layer
 def param_init_gru(options, params, prefix='gru', nin=None, dim=None, hiero=False):
-    if nin == None:
+    if nin is None:
         nin = options['dim_proj']
-    if dim == None:
+    if dim is None:
         dim = options['dim_proj']
     if not hiero:
         W = numpy.concatenate([norm_weight(nin, dim),
@@ -113,7 +113,7 @@ def gru_layer(tparams, state_below, options, prefix='gru', mask=None, **kwargs):
 
     dim = tparams[prefix_append(prefix,'Ux')].shape[1]
 
-    if mask == None:
+    if mask is None:
         mask = tensor.alloc(1., state_below.shape[0], 1)
 
     def _slice(_x, n, dim):
@@ -321,9 +321,9 @@ def gru_cond_layer(tparams, state_below, options, prefix='gru', mask=None, conte
 
 
 def param_init_gru_nonlin(options, params, prefix='gru', nin=None, dim=None, hiero=False):
-    if nin == None:
+    if nin is None:
         nin = options['dim_proj']
-    if dim == None:
+    if dim is None:
         dim = options['dim_proj']
     if not hiero:
         W = numpy.concatenate([norm_weight(nin,dim),
@@ -355,9 +355,9 @@ def param_init_gru_nonlin(options, params, prefix='gru', nin=None, dim=None, hie
 
 # LSTM layer
 def param_init_lstm(options, params, prefix='lstm', nin=None, dim=None, hiero=False):
-    if nin == None:
+    if nin is None:
         nin = options['dim_proj']
-    if dim == None:
+    if dim is None:
         dim = options['dim_proj']
     if not hiero:
         W = numpy.concatenate([norm_weight(nin,dim),
@@ -384,7 +384,7 @@ def lstm_layer(tparams, state_below, options, prefix='lstm', mask=None, **kwargs
 
     dim = tparams[prefix_append(prefix,'U')].shape[0]
 
-    if mask == None:
+    if mask is None:
         mask = tensor.alloc(1., state_below.shape[0], 1)
 
     def _slice(_x, n, dim):
@@ -425,11 +425,11 @@ def lstm_layer(tparams, state_below, options, prefix='lstm', mask=None, **kwargs
 
 # Conditional GRU layer without Attention
 def param_init_gru_cond_simple(options, params, prefix='gru_cond', nin=None, dim=None, dimctx=None):
-    if nin == None:
+    if nin is None:
         nin = options['dim']
-    if dim == None:
+    if dim is None:
         dim = options['dim']
-    if dimctx == None:
+    if dimctx is None:
         dimctx = options['dim']
 
 
@@ -466,7 +466,7 @@ def gru_cond_simple_layer(tparams, state_below, options, prefix='gru', mask=None
     dim = tparams[prefix_append(prefix, 'Ux')].shape[1]
 
     # initial/previous state
-    if init_state == None:
+    if init_state is None:
         init_state = tensor.alloc(0., n_samples, dim)
 
     # projected context 
@@ -527,11 +527,11 @@ def gru_cond_simple_layer(tparams, state_below, options, prefix='gru', mask=None
 
 # Conditional LSTM layer with Attention
 def param_init_lstm_cond(options, params, prefix='lstm_cond', nin=None, dim=None, dimctx=None):
-    if nin == None:
+    if nin is None:
         nin = options['dim']
-    if dim == None:
+    if dim is None:
         dim = options['dim']
-    if dimctx == None:
+    if dimctx is None:
         dimctx = options['dim']
 
     params = param_init_lstm(options, params, prefix, nin, dim)
@@ -580,16 +580,16 @@ def lstm_cond_layer(tparams, state_below, options, prefix='lstm', mask=None, con
         n_samples = 1
 
     # mask
-    if mask == None:
+    if mask is None:
         mask = tensor.alloc(1., state_below.shape[0], 1)
 
     dim = tparams[prefix_append(prefix, 'U')].shape[0]
 
     # initial/previous state
-    if init_state == None:
+    if init_state is None:
         init_state = tensor.alloc(0., n_samples, dim)
     # initial/previous memory 
-    if init_memory == None:
+    if init_memory is None:
         init_memory = tensor.alloc(0., n_samples, dim)
 
     # projected context 
@@ -708,13 +708,13 @@ def rnn_cond_layer(tparams, state_below, options, prefix='rnn', mask=None, conte
         n_samples = 1
 
     # mask
-    if mask == None:
+    if mask is None:
         mask = tensor.alloc(1., state_below.shape[0], 1)
 
     dim = tparams[prefix_append(prefix, 'Ux')].shape[0]
 
     # initial/previous state
-    if init_state == None:
+    if init_state is None:
         init_state = tensor.alloc(0., n_samples, dim)
 
     # projected context 
@@ -787,9 +787,9 @@ def rnn_cond_layer(tparams, state_below, options, prefix='rnn', mask=None, conte
 
 # RNN layer
 def param_init_rnn(options, params, prefix='rnn', nin=None, dim=None):
-    if nin == None:
+    if nin is None:
         nin = options['dim_proj']
-    if dim == None:
+    if dim is None:
         dim = options['dim_proj']
     Wx = norm_weight(nin, dim)
     params[prefix_append(prefix,'Wx')] = Wx
@@ -809,7 +809,7 @@ def rnn_layer(tparams, state_below, options, prefix='rnn', mask=None, **kwargs):
 
     dim = tparams[prefix_append(prefix,'Ux')].shape[0]
 
-    if mask == None:
+    if mask is None:
         mask = tensor.alloc(1., state_below.shape[0], 1)
 
     def _slice(_x, n, dim):
@@ -843,9 +843,9 @@ def rnn_layer(tparams, state_below, options, prefix='rnn', mask=None, **kwargs):
 
 # Hierarchical GRU layer 
 def param_init_gru_hiero(options, params, prefix='gru_hiero', nin=None, dimctx=None):
-    if nin == None:
+    if nin is None:
         nin = options['dim']
-    if dimctx == None:
+    if dimctx is None:
         dimctx = options['dim']
     dim = dimctx
 
@@ -891,7 +891,7 @@ def gru_hiero_layer(tparams, context, options, prefix='gru_hiero', context_mask=
         n_samples = 1
 
     # mask
-    if context_mask == None:
+    if context_mask is None:
         mask = tensor.alloc(1., context.shape[0], 1)
     else:
         mask = context_mask
@@ -981,9 +981,9 @@ def gru_hiero_layer(tparams, context, options, prefix='gru_hiero', context_mask=
 
 # Hierarchical RNN layer 
 def param_init_rnn_hiero(options, params, prefix='rnn_hiero', nin=None, dimctx=None):
-    if nin == None:
+    if nin is None:
         nin = options['dim']
-    if dimctx == None:
+    if dimctx is None:
         dimctx = options['dim']
     dim = dimctx
 
@@ -1025,7 +1025,7 @@ def rnn_hiero_layer(tparams, context, options, prefix='rnn_hiero', context_mask=
         n_samples = 1
 
     # mask
-    if context_mask == None:
+    if context_mask is None:
         mask = tensor.alloc(1., context.shape[0], 1)
     else:
         mask = context_mask

@@ -56,7 +56,7 @@ def load_params(path, params):
     pp = numpy.load(path)
     for kk, vv in params.iteritems():
         if kk not in pp:
-            warnings.warn('%s is not in the archive'%kk)
+            warnings.warn('{} is not in the archive'.format(kk))
             continue
         params[kk] = pp[kk]
 
@@ -120,7 +120,7 @@ def build_model(tparams, options):
     n_timesteps = x.shape[0]
     n_timesteps_trg = y.shape[0]
     n_samples = x.shape[1]
-    src_lengths = x_mask.sum(axis=0)
+    # src_lengths = x_mask.sum(axis=0)
 
     emb = tparams['Wemb'][x.flatten()].reshape([n_timesteps, n_samples, options['dim_word']])
     proj = get_layer(options['encoder'])[1](tparams, emb, options,
@@ -160,7 +160,6 @@ def build_model(tparams, options):
     emb_shifted = tensor.set_subtensor(emb_shifted[1:], emb[:-1])
     emb = emb_shifted
 
-
     # decoder
     proj = get_layer(options['decoder'])[1](tparams, emb, options,
                                             prefix='decoder',
@@ -170,32 +169,36 @@ def build_model(tparams, options):
                                             init_state=init_state,
                                             init_memory=init_memory)
     proj_h = proj[0]
+
     if options['decoder'].endswith('simple'):
-        ctxs = ctx[None,:,:]
+        ctxs = ctx[None, :, :]
+    elif options['decoder'].startswith('lstm'):
+        ctxs = proj[2]
+        opt_ret['dec_alphas'] = proj[3]
     else:
-        if options['decoder'].startswith('lstm'):
-            ctxs = proj[2]
-            opt_ret['dec_alphas'] = proj[3]
-        else:
-            ctxs = proj[1]
-            opt_ret['dec_alphas'] = proj[2]
+        ctxs = proj[1]
+        opt_ret['dec_alphas'] = proj[2]
+
     # compute word probabilities
     logit_lstm = get_layer('ff')[1](tparams, proj_h, options, prefix='ff_logit_lstm', activ='linear')
     logit_prev = get_layer('ff_nb')[1](tparams, emb, options, prefix='ff_nb_logit_prev', activ='linear')
     logit_ctx = get_layer('ff_nb')[1](tparams, ctxs, options, prefix='ff_nb_logit_ctx', activ='linear')
-    
-    logit = tensor.tanh(logit_lstm+logit_prev+logit_ctx)
-    
+
+    logit = tensor.tanh(logit_lstm + logit_prev + logit_ctx)
     logit = get_layer('ff')[1](tparams, logit, options, prefix='ff_logit', activ='linear')
+
     logit_shp = logit.shape
-    probs = tensor.nnet.softmax(logit.reshape([logit_shp[0]*logit_shp[1], logit_shp[2]]))
+
+    probs = tensor.nnet.softmax(logit.reshape([logit_shp[0] * logit_shp[1], logit_shp[2]]))
+
     # cost
     y_flat = y.flatten()
     y_flat_idx = tensor.arange(y_flat.shape[0]) * options['n_words'] + y_flat
+
     cost = -tensor.log(probs.flatten()[y_flat_idx])
-    cost = cost.reshape([y.shape[0],y.shape[1]])
+    cost = cost.reshape([y.shape[0], y.shape[1]])
     cost = (cost * y_mask).sum(0)
-    
+
     return trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost
 
 
@@ -210,22 +213,24 @@ def build_sampler(tparams, options, trng):
     emb = tparams['Wemb'][x.flatten()].reshape([n_timesteps, n_samples, options['dim_word']])
     embr = tparams['Wemb'][xr.flatten()].reshape([n_timesteps, n_samples, options['dim_word']])
 
-
     # encoder
     proj = get_layer(options['encoder'])[1](tparams, emb, options, prefix='encoder')
+
     if options['decoder'].endswith('simple'):
         ctx = proj[0][-1]
         ctx_mean = ctx
     else:
         projr = get_layer(options['encoder'])[1](tparams, embr, options, prefix='encoder_r')
-        ctx = concatenate([proj[0],projr[0][::-1]], axis=proj[0].ndim-1)
+        ctx = concatenate([proj[0], projr[0][::-1]], axis=proj[0].ndim - 1)
         if options['hiero']:
             rval = get_layer(options['hiero'])[1](tparams, ctx, options, prefix='hiero')
             ctx = rval[0]
         # initial state/cell
         # ctx_mean = ctx.mean(0)
-        ctx_mean = concatenate([proj[0][-1],projr[0][-1]], axis=proj[0].ndim-2)
+        ctx_mean = concatenate([proj[0][-1], projr[0][-1]], axis=proj[0].ndim - 2)
+
     init_state = get_layer('ff')[1](tparams, ctx_mean, options, prefix='ff_state', activ='tanh')
+
     if options['encoder'] == 'lstm':
         init_memory = get_layer('ff')[1](tparams, ctx_mean, options, prefix='ff_memory', activ='tanh')
 
@@ -239,27 +244,27 @@ def build_sampler(tparams, options, trng):
 
     # x: 1 x 1
     y = tensor.vector('y_sampler', dtype='int64')
-    
+
     init_state = tensor.matrix('init_state', dtype='float32')
+
     if options['decoder'].startswith('lstm'):
         init_memory = tensor.matrix('init_memory', dtype='float32')
     else:
         init_memory = None
-    
+
     n_timesteps = ctx.shape[0]
-        
+
     # if it's the first word, emb should be all zero
-    emb = tensor.switch(y[:,None] < 0, tensor.alloc(0., 1, tparams['Wemb_dec'].shape[1]), 
+    emb = tensor.switch(y[:, None] < 0, tensor.alloc(0., 1, tparams['Wemb_dec'].shape[1]),
                         tparams['Wemb_dec'][y])
 
-    
-
-    proj = get_layer(options['decoder'])[1](tparams, emb, options, 
-                                            prefix='decoder', 
-                                            mask=None, context=ctx, 
-                                            one_step=True, 
+    proj = get_layer(options['decoder'])[1](tparams, emb, options,
+                                            prefix='decoder',
+                                            mask=None, context=ctx,
+                                            one_step=True,
                                             init_state=init_state,
                                             init_memory=init_memory)
+
     if options['decoder'].endswith('simple'):
         next_state = proj
         ctxs = ctx
@@ -273,21 +278,21 @@ def build_sampler(tparams, options, trng):
     logit_lstm = get_layer('ff')[1](tparams, next_state, options, prefix='ff_logit_lstm', activ='linear')
     logit_prev = get_layer('ff_nb')[1](tparams, emb, options, prefix='ff_nb_logit_prev', activ='linear')
     logit_ctx = get_layer('ff_nb')[1](tparams, ctxs, options, prefix='ff_nb_logit_ctx', activ='linear')
-    
-    logit = tensor.tanh(logit_lstm+logit_prev+logit_ctx)
-    
+
+    logit = tensor.tanh(logit_lstm + logit_prev + logit_ctx)
+
     logit = get_layer('ff')[1](tparams, logit, options, prefix='ff_logit', activ='linear')
     next_probs = tensor.nnet.softmax(logit)
     next_sample = trng.multinomial(pvals=next_probs).argmax(1)
 
     # next word probability
-    print 'Building f_next..', 
+    print 'Building f_next..',
     inps = [y, ctx, init_state]
     outs = [next_probs, next_sample, next_state]
     if options['decoder'].startswith('lstm'):
         inps += [init_memory]
         outs += [next_memory]
-    
+
     f_next = theano.function(inps, outs, name='f_next', profile=profile)
     print 'Done'
 
@@ -330,7 +335,7 @@ def gen_sample(tparams, f_init, f_next, x, options, trng=None, k=1, maxlen=30, m
         inps = [next_w, ctx, next_state]
         if options['decoder'].startswith('lstm'):
             inps += [next_memory]
-        
+
         ret = f_next(*inps)
         next_p = ret.pop(0)
         next_w = ret.pop(0)
@@ -425,7 +430,7 @@ def pred_probs(f_log_probs, prepare_data, options, iterator, verbose=True):
 
         x, x_mask, y, y_mask = prepare_data(x, y, maxlen=50, n_words_src=options['n_words_src'], n_words=options['n_words'])
         
-        if x == None:
+        if x is None:
             continue
 
         pprobs = f_log_probs(x,x_mask,y,y_mask)
@@ -438,42 +443,39 @@ def pred_probs(f_log_probs, prepare_data, options, iterator, verbose=True):
     return numpy.array(probs)
 
 
-
-def train(dim_word=100, # word vector dimensionality
-          dim=1000, # the number of LSTM units
+def train(dim_word=100,  # word vector dimensionality
+          dim=1000,  # the number of LSTM units
           encoder='gru',
           decoder='gru_cond',
-          hiero=None, #'gru_hiero', # or None
+          hiero=None,  # 'gru_hiero', # or None
           patience=10,
           max_epochs=5000,
           dispFreq=100,
-          decay_c=0., 
-          alpha_c=0., 
+          decay_c=0.,
+          alpha_c=0.,
           diag_c=0.,
-          lrate=0.01, 
+          lrate=0.01,
           n_words_src=100000,
           n_words=100000,
-          maxlen=100, # maximum length of the description
-          optimizer='rmsprop', 
-          batch_size = 16,
-          valid_batch_size = 16,
+          maxlen=100,  # maximum length of the description
+          optimizer='rmsprop',
+          batch_size=16,
+          valid_batch_size=16,
           saveto='saved_models/model.npz',
           validFreq=1000,
-          saveFreq=1000, # save the parameters after every saveFreq updates
-          sampleFreq=100, # generate some samples after every sampleFreq updates
+          saveFreq=1000,  # save the parameters after every saveFreq updates
+          sampleFreq=100,  # generate some samples after every sampleFreq updates
           dataset='wmt14enfr',
-          dictionary=None, # word dictionary
-          dictionary_src=None, # word dictionary
+          dictionary=None,  # word dictionary
+          dictionary_src=None,  # word dictionary
           use_dropout=False,
           reload_=False,    # Contains the name of the file to reload or false
           correlation_coeff=0.1,
           clip_c=0.):
 
-
-    # Model options
     model_options = inspect.currentframe().f_locals
     # model_options = locals().copy()
-
+    print model_options
     if dictionary:
         word_dict, word_idict = load_dictionary(dictionary)
 
@@ -487,7 +489,7 @@ def train(dim_word=100, # word vector dimensionality
     # reload options
     if reload_:
         with open('{}.npz.pkl'.format(reload_), 'rb') as f:
-            models_options = pkl.load(f)
+            model_options = pkl.load(f)
 
     print 'Building model'
     params = init_params(model_options)
@@ -588,7 +590,7 @@ def train(dim_word=100, # word vector dimensionality
 
     for eidx in xrange(max_epochs):
         n_samples = 0
-        # import ipdb; ipdb.set_trace()
+
         train.start()
         for x, y in train:
             n_samples += len(x)
@@ -621,7 +623,7 @@ def train(dim_word=100, # word vector dimensionality
 
                 # import ipdb; ipdb.set_trace()
 
-                # if best_p != None:
+                # if best_p is not None:
                 #     params = best_p
                 # else:
                 params = unzip(tparams)
