@@ -1,6 +1,7 @@
 import pickle as pkl
 import numpy
 
+
 def load_dictionary(dictionary):
     with open(dictionary, 'rb') as f:
         word_dict = pkl.load(f)
@@ -9,6 +10,7 @@ def load_dictionary(dictionary):
         word_idict[vv] = kk
 
     return word_dict, word_idict
+
 
 # Math utils
 def ortho_weight(ndim):
