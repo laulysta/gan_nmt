@@ -44,30 +44,6 @@ def get_dataset(name):
     return datasets[name][0], datasets[name][1]
 
 
-# push parameters to Theano shared variables
-def zipp(params, tparams):
-    for kk, vv in params.iteritems():
-        tparams[kk].set_value(vv)
-
-
-# pull parameters from Theano shared variables
-def unzip(zipped):
-    new_params = OrderedDict()
-    for kk, vv in zipped.iteritems():
-        new_params[kk] = vv.get_value()
-    return new_params
-
-
-# get the list of parameters: Note that tparams must be OrderedDict
-def itemlist(tparams):
-    return [vv for kk, vv in tparams.iteritems()]
-
-
-# make prefix-appended name
-def _p(pp, name):
-    return '{}_{}'.format(pp, name)
-
-
 # initialize Theano shared variables according to the initial parameters
 def init_tparams(params):
     tparams = OrderedDict()

@@ -18,10 +18,6 @@ layers = {'ff': ('param_init_fflayer', 'fflayer'),
           'rnn_hiero': ('param_init_rnn_hiero', 'rnn_hiero_layer'),
           }
 
-# make prefix-appended name
-def _p(pp, name):
-    return '%s_%s'%(pp, name)
-
 
 def tanh(x):
     return tensor.tanh(x)
