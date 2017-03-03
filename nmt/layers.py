@@ -1,5 +1,6 @@
 import theano
 import theano.tensor as tensor
+import numpy
 
 profile = False
 # layers: 'name': ('parameter initializer', 'feedforward')
@@ -790,11 +791,11 @@ def param_init_rnn(options, params, prefix='rnn', nin=None, dim=None):
 
 # Conditional RNN layer with Attention
 def param_init_rnn_cond(options, params, prefix='rnn_cond', nin=None, dim=None, dimctx=None):
-    if nin == None:
+    if nin is None:
         nin = options['dim']
-    if dim == None:
+    if dim is None:
         dim = options['dim']
-    if dimctx == None:
+    if dimctx is None:
         dimctx = options['dim']
 
     params = param_init_rnn(options, params, prefix, nin=nin, dim=dim)
