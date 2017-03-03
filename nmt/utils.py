@@ -1,4 +1,5 @@
-import pickle as pkl     
+import pickle as pkl
+import numpy
 
 def load_dictionary(dictionary):
     with open(dictionary, 'rb') as f:
