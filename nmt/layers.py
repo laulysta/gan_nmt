@@ -18,6 +18,11 @@ layers = {'ff': ('param_init_fflayer', 'fflayer'),
           }
 
 
+def get_layer(name):
+    fns = layers[name]
+    return (eval(fns[0]), eval(fns[1]))
+
+
 def tanh(x):
     return tensor.tanh(x)
 
