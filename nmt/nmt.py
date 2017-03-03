@@ -14,15 +14,15 @@ import warnings
 import sys
 import time
 
-from scipy import optimize, stats
 from collections import OrderedDict
-#from sklearn.cross_validation import KFold
 
 import wmt14enfr
 import iwslt14zhen
 import openmt15zhen
 import trans_enhi
 import stan
+
+import inspect
 
 theano.config.floatX = 'float32'
 profile = False
@@ -1736,8 +1736,10 @@ def train(dim_word=100, # word vector dimensionality
           correlation_coeff=0.1,
           clip_c=0.):
 
+
     # Model options
-    model_options = locals().copy()
+    model_options = inspect.currentframe().f_locals
+    # model_options = locals().copy()
 
     if dictionary:
         with open(dictionary, 'rb') as f:
