@@ -770,7 +770,7 @@ if __name__ == '__main__':
           valid_batch_size=16,
           saveto='saved_models/model.npz',
           validFreq=1000,
-          saveFreq=1000,
+          saveFreq=5,
           sampleFreq=100,
           dataset='stan',
           dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
