@@ -77,21 +77,20 @@ def init_params(options):
     ctxdim = options['dim']
     if not options['decoder'].endswith('simple'):
         ctxdim = options['dim'] * 2
-        params = get_layer(options['encoder'])[0](options, params, prefix='encoder_r', 
+        params = get_layer(options['encoder'])[0](options, params, prefix='encoder_r',
                                                   nin=options['dim_word'], dim=options['dim'])
         if options['hiero']:
-            params = get_layer(options['hiero'])[0](options, params, prefix='hiero', 
-                                                    nin=2*options['dim'], dimctx=2*options['dim'])
+            params = get_layer(options['hiero'])[0](options, params, prefix='hiero',
+                                                    nin=2 * options['dim'],
+                                                    dimctx=2 * options['dim'])
     # init_state, init_cell
     params = get_layer('ff')[0](options, params, prefix='ff_state', nin=ctxdim, nout=options['dim'])
     if options['encoder'] == 'lstm':
         params = get_layer('ff')[0](options, params, prefix='ff_memory', nin=ctxdim, nout=options['dim'])
     # decoder: LSTM
-    params = get_layer(options['decoder'])[0](options, params, prefix='decoder', 
-                                              nin=options['dim_word'], dim=options['dim'], 
+    params = get_layer(options['decoder'])[0](options, params, prefix='decoder',
+                                              nin=options['dim_word'], dim=options['dim'],
                                               dimctx=ctxdim)
-
-    
 
     # readout
     params = get_layer('ff')[0](options, params, prefix='ff_logit_lstm', nin=options['dim'], nout=options['dim_word'], ortho=False)
