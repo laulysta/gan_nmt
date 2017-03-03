@@ -515,3 +515,574 @@ def gru_cond_layer(tparams, state_below, options, prefix='gru', mask=None, conte
     return rval
 
 
+
+def gru_hiero_layer(tparams, context, options, prefix='gru_hiero', context_mask=None, **kwargs):
+
+    nsteps = context.shape[0]
+    if context.ndim == 3:
+        n_samples = context.shape[1]
+    else:
+        n_samples = 1
+
+    # mask
+    if context_mask == None:
+        mask = tensor.alloc(1., context.shape[0], 1)
+    else:
+        mask = context_mask
+
+    dim = tparams[_p(prefix, 'W_st')].shape[0]
+
+    # initial/previous state
+    init_state = tensor.alloc(0., n_samples, dim)
+
+    # projected context 
+    assert context.ndim == 3, 'Context must be 3-d: #annotation x #sample x dim'
+    pctx_ = tensor.dot(context, tparams[_p(prefix,'Wc_att')]) + tparams[_p(prefix,'b_att')]
+
+    def _slice(_x, n, dim):
+        if _x.ndim == 3:
+            return _x[:, :, n*dim:(n+1)*dim]
+        return _x[:, n*dim:(n+1)*dim]
+
+    def _step_slice(m_, h_, ctx_, alpha_, v_, pp_, cc_,
+                    U, Wc, Wd_att, U_att, c_tt, Ux, Wx, bx, W_st, b_st):
+        # attention
+        pstate_ = tensor.dot(h_, Wd_att)
+        pctx__ = pp_ + pstate_[None,:,:] 
+        pctx__ = tensor.tanh(pctx__)
+        alpha = tensor.dot(pctx__, U_att)+c_tt
+        alpha = alpha.reshape([alpha.shape[0], alpha.shape[1]])
+        alpha = tensor.exp(alpha)
+        if context_mask:
+            alpha = alpha * context_mask
+        alpha = alpha / alpha.sum(0, keepdims=True)
+        ctx = (cc_ * alpha[:,:,None]).sum(0) # current context
+
+        preact = tensor.dot(h_, U)
+        preact += tensor.dot(ctx, Wc)
+        preact = tensor.nnet.sigmoid(preact)
+
+        r = _slice(preact, 0, dim)
+        u = _slice(preact, 1, dim)
+
+        preactx = tensor.dot(h_, Ux)
+        preactx = preactx * r
+        preactx += tensor.dot(ctx, Wx)
+        preactx += bx
+
+        h = tensor.tanh(preactx)
+
+        h = u * h_ + (1. - u) * h
+
+        h = m_[:,None] * h + (1. - m_)[:,None] * h_
+
+        # compute stopping probability
+        ss = tensor.nnet.sigmoid(tensor.dot(h, W_st) + b_st)
+        v_ = v_ * (1. - ss)[:,0][:,None]
+
+        return h, ctx, alpha.T, v_[:,0] #, pstate_, preact, preactx, r, u
+
+    _step = _step_slice
+
+    rval, updates = theano.scan(_step, 
+                                sequences=[mask],
+                                outputs_info = [init_state, 
+                                                tensor.alloc(0., n_samples, context.shape[2]),
+                                                tensor.alloc(0., n_samples, context.shape[0]),
+                                                tensor.alloc(1., n_samples)],
+                                                #None, None, None, 
+                                                #None, None],
+                                non_sequences=[pctx_, 
+                                               context,
+                                               tparams[_p(prefix, 'U')],
+                                               tparams[_p(prefix, 'Wc')],
+                                               tparams[_p(prefix,'Wd_att')], 
+                                               tparams[_p(prefix,'U_att')], 
+                                               tparams[_p(prefix, 'c_tt')], 
+                                               tparams[_p(prefix, 'Ux')], 
+                                               tparams[_p(prefix, 'Wx')],
+                                               tparams[_p(prefix, 'bx')], 
+                                               tparams[_p(prefix, 'W_st')], 
+                                               tparams[_p(prefix, 'b_st')]],
+                                name=_p(prefix, '_layers'),
+                                n_steps=nsteps,
+                                profile=profile,
+                                strict=True)
+
+    rval[0] = rval[0] * rval[3][:,:,None]
+    return rval
+
+
+def lstm_layer(tparams, state_below, options, prefix='lstm', mask=None, **kwargs):
+    nsteps = state_below.shape[0]
+    if state_below.ndim == 3:
+        n_samples = state_below.shape[1]
+    else:
+        n_samples = 1
+
+    dim = tparams[_p(prefix,'U')].shape[0]
+
+    if mask == None:
+        mask = tensor.alloc(1., state_below.shape[0], 1)
+
+    def _slice(_x, n, dim):
+        if _x.ndim == 3:
+            return _x[:, :, n*dim:(n+1)*dim]
+        return _x[:, n*dim:(n+1)*dim]
+
+    def _step(m_, x_, h_, c_):
+        preact = tensor.dot(h_, tparams[_p(prefix, 'U')])
+        preact += x_
+        preact += tparams[_p(prefix, 'b')]
+
+        i = tensor.nnet.sigmoid(_slice(preact, 0, dim))
+        f = tensor.nnet.sigmoid(_slice(preact, 1, dim))
+        o = tensor.nnet.sigmoid(_slice(preact, 2, dim))
+        c = tensor.tanh(_slice(preact, 3, dim))
+
+        c = f * c_ + i * c
+        c = m_[:,None] * c + (1. - m_)[:,None] * c_
+
+        h = o * tensor.tanh(c)
+        h = m_[:,None] * h + (1. - m_)[:,None] * h_
+
+        return h, c, i, f, o, preact
+
+    state_below = tensor.dot(state_below, tparams[_p(prefix, 'W')]) + tparams[_p(prefix, 'b')]
+
+    rval, updates = theano.scan(_step, 
+                                sequences=[mask, state_below],
+                                outputs_info = [tensor.alloc(0., n_samples, dim),
+                                                tensor.alloc(0., n_samples, dim),
+                                                None, None, None, None],
+                                name=_p(prefix, '_layers'),
+                                n_steps=nsteps,
+                                profile=profile)
+    return rval
+
+
+def lstm_cond_layer(tparams, state_below, options, prefix='lstm', mask=None, context=None, one_step=False, init_memory=None, init_state=None, context_mask=None, **kwargs):
+
+    assert context, 'Context must be provided'
+
+    if one_step:
+        assert init_memory, 'previous memory must be provided'
+        assert init_state, 'previous state must be provided'
+
+    nsteps = state_below.shape[0]
+    if state_below.ndim == 3:
+        n_samples = state_below.shape[1]
+    else:
+        n_samples = 1
+
+    # mask
+    if mask == None:
+        mask = tensor.alloc(1., state_below.shape[0], 1)
+
+    dim = tparams[_p(prefix, 'U')].shape[0]
+
+    # initial/previous state
+    if init_state == None:
+        init_state = tensor.alloc(0., n_samples, dim)
+    # initial/previous memory 
+    if init_memory == None:
+        init_memory = tensor.alloc(0., n_samples, dim)
+
+    # projected context 
+    assert context.ndim == 3, 'Context must be 3-d: #annotation x #sample x dim'
+    pctx_ = tensor.dot(context, tparams[_p(prefix,'Wc_att')]) + tparams[_p(prefix,'b_att')]
+
+    # projected x
+    state_below = tensor.dot(state_below, tparams[_p(prefix, 'W')]) + tparams[_p(prefix, 'b')]
+    state_belowc = tensor.dot(state_below, tparams[_p(prefix, 'Wi_att')])
+
+    def _slice(_x, n, dim):
+        if _x.ndim == 3:
+            return _x[:, :, n*dim:(n+1)*dim]
+        return _x[:, n*dim:(n+1)*dim]
+
+    def _step(m_, x_, xc_, h_, c_, ctx_, alpha_, pctx_):
+
+        # attention
+        pstate_ = tensor.dot(h_, tparams[_p(prefix,'Wd_att')])
+        pctx__ = pctx_ + pstate_[None,:,:] 
+        pctx__ += xc_
+        pctx__ = tensor.tanh(pctx__)
+        alpha = tensor.dot(pctx__, tparams[_p(prefix,'U_att')])+tparams[_p(prefix, 'c_tt')]
+        alpha = alpha.reshape([alpha.shape[0], alpha.shape[1]])
+        alpha = tensor.exp(alpha)
+        if context_mask:
+            alpha = alpha * context_mask
+        alpha = alpha / alpha.sum(0, keepdims=True)
+        ctx_ = (context * alpha[:,:,None]).sum(0) # current context
+
+        preact = tensor.dot(h_, tparams[_p(prefix, 'U')])
+        preact += x_
+        preact += tensor.dot(ctx_, tparams[_p(prefix, 'Wc')])
+
+        i = tensor.nnet.sigmoid(_slice(preact, 0, dim))
+        f = tensor.nnet.sigmoid(_slice(preact, 1, dim))
+        o = tensor.nnet.sigmoid(_slice(preact, 2, dim))
+        c = tensor.tanh(_slice(preact, 3, dim))
+
+        c = f * c_ + i * c
+        c = m_[:,None] * c + (1. - m_)[:,None] * c_
+
+        h = o * tensor.tanh(c)
+        h = m_[:,None] * h + (1. - m_)[:,None] * h_
+
+        return h, c, ctx_, alpha.T, pstate_, preact, i, f, o
+
+    if one_step:
+        rval = _step(mask, state_below, state_belowc, init_state, init_memory, None, None, pctx_)
+    else:
+        rval, updates = theano.scan(_step, 
+                                    sequences=[mask, state_below, state_belowc],
+                                    outputs_info = [init_state, init_memory,
+                                                    tensor.alloc(0., n_samples, context.shape[2]),
+                                                    tensor.alloc(0., n_samples, context.shape[0]),
+                                                    None, None, None, 
+                                                    None, None],
+                                    non_sequences=[pctx_],
+                                    name=_p(prefix, '_layers'),
+                                    n_steps=nsteps,
+                                    profile=profile)
+    return rval
+
+
+# feedforward layer: affine transformation + point-wise nonlinearity
+def param_init_fflayer(options, params, prefix='ff', nin=None, nout=None, ortho=True):
+    if nin == None:
+        nin = options['dim_proj']
+    if nout == None:
+        nout = options['dim_proj']
+    params[_p(prefix,'W')] = norm_weight(nin, nout, scale=0.01, ortho=ortho)
+    params[_p(prefix,'b')] = numpy.zeros((nout,)).astype('float32')
+
+    return params
+
+
+# feedforward layer with no bias: affine transformation + point-wise nonlinearity
+def param_init_fflayer_nb(options, params, prefix='ff_nb', nin=None, nout=None, ortho=True):
+    if nin == None:
+        nin = options['dim_proj']
+    if nout == None:
+        nout = options['dim_proj']
+    params[_p(prefix,'W')] = norm_weight(nin, nout, scale=0.01, ortho=ortho)
+
+    return params
+
+
+# RNN layer
+def param_init_rnn(options, params, prefix='rnn', nin=None, dim=None):
+    if nin == None:
+        nin = options['dim_proj']
+    if dim == None:
+        dim = options['dim_proj']
+    Wx = norm_weight(nin, dim)
+    params[_p(prefix,'Wx')] = Wx
+    Ux = ortho_weight(dim)
+    params[_p(prefix,'Ux')] = Ux
+    params[_p(prefix,'bx')] = numpy.zeros((dim,)).astype('float32')
+
+    return params
+
+
+# Conditional RNN layer with Attention
+def param_init_rnn_cond(options, params, prefix='rnn_cond', nin=None, dim=None, dimctx=None):
+    if nin == None:
+        nin = options['dim']
+    if dim == None:
+        dim = options['dim']
+    if dimctx == None:
+        dimctx = options['dim']
+
+    params = param_init_rnn(options, params, prefix, nin=nin, dim=dim)
+
+    # context to LSTM
+    Wcx = norm_weight(dimctx,dim)
+    params[_p(prefix,'Wcx')] = Wcx
+
+    # attention: prev -> hidden
+    Wi_att = norm_weight(nin,dimctx)
+    params[_p(prefix,'Wi_att')] = Wi_att
+
+    # attention: context -> hidden
+    Wc_att = norm_weight(dimctx)
+    params[_p(prefix,'Wc_att')] = Wc_att
+
+    # attention: LSTM -> hidden
+    Wd_att = norm_weight(dim,dimctx)
+    params[_p(prefix,'Wd_att')] = Wd_att
+
+    # attention: hidden bias
+    b_att = numpy.zeros((dimctx,)).astype('float32')
+    params[_p(prefix,'b_att')] = b_att
+
+    # attention: 
+    U_att = norm_weight(dimctx,1)
+    params[_p(prefix,'U_att')] = U_att
+    c_att = numpy.zeros((1,)).astype('float32')
+    params[_p(prefix, 'c_tt')] = c_att
+
+    return params
+
+
+# Hierarchical RNN layer 
+def param_init_rnn_hiero(options, params, prefix='rnn_hiero', nin=None, dimctx=None):
+    if nin == None:
+        nin = options['dim']
+    if dimctx == None:
+        dimctx = options['dim']
+    dim = dimctx
+
+    params = param_init_rnn(options, params, prefix, nin=nin, dim=dim)
+
+    # attention: context -> hidden
+    Wc_att = norm_weight(dimctx)
+    params[_p(prefix,'Wc_att')] = Wc_att
+
+    # attention: LSTM -> hidden
+    Wd_att = norm_weight(dim,dimctx)
+    params[_p(prefix,'Wd_att')] = Wd_att
+
+    # attention: hidden bias
+    b_att = numpy.zeros((dimctx,)).astype('float32')
+    params[_p(prefix,'b_att')] = b_att
+
+    # attention: 
+    U_att = norm_weight(dimctx,1)
+    params[_p(prefix,'U_att')] = U_att
+    c_att = numpy.zeros((1,)).astype('float32')
+    params[_p(prefix, 'c_tt')] = c_att
+
+    # stop probability:
+    W_st = norm_weight(dim, 1)
+    params[_p(prefix,'W_st')] = W_st
+    b_st = numpy.zeros((1,)).astype('float32')
+    params[_p(prefix,'b_st')] = b_st
+
+    return params
+
+
+# GRU layer
+def param_init_gru(options, params, prefix='gru', nin=None, dim=None, hiero=False):
+    if nin == None:
+        nin = options['dim_proj']
+    if dim == None:
+        dim = options['dim_proj']
+    if not hiero:
+        W = numpy.concatenate([norm_weight(nin,dim),
+                               norm_weight(nin,dim)], axis=1)
+        params[_p(prefix,'W')] = W
+        params[_p(prefix,'b')] = numpy.zeros((2 * dim,)).astype('float32')
+    U = numpy.concatenate([ortho_weight(dim),
+                           ortho_weight(dim)], axis=1)
+    params[_p(prefix,'U')] = U
+
+    Wx = norm_weight(nin, dim)
+    params[_p(prefix,'Wx')] = Wx
+    Ux = ortho_weight(dim)
+    params[_p(prefix,'Ux')] = Ux
+    params[_p(prefix,'bx')] = numpy.zeros((dim,)).astype('float32')
+
+    return params
+
+
+def param_init_gru_nonlin(options, params, prefix='gru', nin=None, dim=None, hiero=False):
+    if nin == None:
+        nin = options['dim_proj']
+    if dim == None:
+        dim = options['dim_proj']
+    if not hiero:
+        W = numpy.concatenate([norm_weight(nin,dim),
+                               norm_weight(nin,dim)], axis=1)
+        params[_p(prefix,'W')] = W
+        params[_p(prefix,'b')] = numpy.zeros((2 * dim,)).astype('float32')
+    U = numpy.concatenate([ortho_weight(dim),
+                           ortho_weight(dim)], axis=1)
+    params[_p(prefix,'U')] = U
+
+    Wx = norm_weight(nin, dim)
+    params[_p(prefix,'Wx')] = Wx
+    Ux = ortho_weight(dim)
+    params[_p(prefix,'Ux')] = Ux
+    params[_p(prefix,'bx')] = numpy.zeros((dim,)).astype('float32')
+
+    
+    U_nl = numpy.concatenate([ortho_weight(dim),
+                              ortho_weight(dim)], axis=1)
+    params[_p(prefix,'U_nl')] = U_nl
+    params[_p(prefix,'b_nl')] = numpy.zeros((2 * dim,)).astype('float32')
+
+    Ux_nl = ortho_weight(dim)
+    params[_p(prefix,'Ux_nl')] = Ux_nl
+    params[_p(prefix,'bx_nl')] = numpy.zeros((dim,)).astype('float32')
+    
+    return params
+
+
+
+# Conditional GRU layer without Attention
+def param_init_gru_cond_simple(options, params, prefix='gru_cond', nin=None, dim=None, dimctx=None):
+    if nin == None:
+        nin = options['dim']
+    if dim == None:
+        dim = options['dim']
+    if dimctx == None:
+        dimctx = options['dim']
+
+
+    params = param_init_gru(options, params, prefix, nin=nin, dim=dim)
+
+
+    # context to LSTM
+    Wc = norm_weight(dimctx,dim*2)
+    params[_p(prefix,'Wc')] = Wc
+
+    Wcx = norm_weight(dimctx,dim)
+    params[_p(prefix,'Wcx')] = Wcx
+
+    return params
+
+
+# Conditional GRU layer with Attention
+def param_init_gru_cond(options, params, prefix='gru_cond', nin=None, dim=None, dimctx=None):
+    if nin is None:
+        nin = options['dim']
+    if dim is None:
+        dim = options['dim']
+    if dimctx is None:
+        dimctx = options['dim']
+
+    params = param_init_gru_nonlin(options, params, prefix, nin=nin, dim=dim)
+
+    # context to LSTM
+    Wc = norm_weight(dimctx, dim * 2)
+    params[_p(prefix, 'Wc')] = Wc
+
+    Wcx = norm_weight(dimctx, dim)
+    params[_p(prefix, 'Wcx')] = Wcx
+
+    # attention: combined -> hidden
+    W_comb_att = norm_weight(dim, dimctx)
+    params[_p(prefix, 'W_comb_att')] = W_comb_att
+
+    # attention: context -> hidden
+    Wc_att = norm_weight(dimctx)
+    params[_p(prefix, 'Wc_att')] = Wc_att
+
+    # attention: hidden bias
+    b_att = numpy.zeros((dimctx,)).astype('float32')
+    params[_p(prefix, 'b_att')] = b_att
+
+    # attention: 
+    U_att = norm_weight(dimctx, 1)
+    params[_p(prefix, 'U_att')] = U_att
+    c_att = numpy.zeros((1,)).astype('float32')
+    params[_p(prefix, 'c_tt')] = c_att
+
+    return params
+
+
+# Hierarchical GRU layer 
+def param_init_gru_hiero(options, params, prefix='gru_hiero', nin=None, dimctx=None):
+    if nin == None:
+        nin = options['dim']
+    if dimctx == None:
+        dimctx = options['dim']
+    dim = dimctx
+
+    params = param_init_gru(options, params, prefix, nin=nin, dim=dim, hiero=True)
+
+    # context to LSTM
+    Wc = norm_weight(dimctx,dim*2)
+    params[_p(prefix,'Wc')] = Wc
+
+    # attention: context -> hidden
+    Wc_att = norm_weight(dimctx)
+    params[_p(prefix,'Wc_att')] = Wc_att
+
+    # attention: LSTM -> hidden
+    Wd_att = norm_weight(dim,dimctx)
+    params[_p(prefix,'Wd_att')] = Wd_att
+
+    # attention: hidden bias
+    b_att = numpy.zeros((dimctx,)).astype('float32')
+    params[_p(prefix,'b_att')] = b_att
+
+    # attention: 
+    U_att = norm_weight(dimctx,1)
+    params[_p(prefix,'U_att')] = U_att
+    c_att = numpy.zeros((1,)).astype('float32')
+    params[_p(prefix, 'c_tt')] = c_att
+
+    # stop probability:
+    W_st = norm_weight(dim, 1)
+    params[_p(prefix,'W_st')] = W_st
+    b_st = -0. * numpy.ones((1,)).astype('float32')
+    params[_p(prefix,'b_st')] = b_st
+
+    return params
+
+
+# LSTM layer
+def param_init_lstm(options, params, prefix='lstm', nin=None, dim=None, hiero=False):
+    if nin == None:
+        nin = options['dim_proj']
+    if dim == None:
+        dim = options['dim_proj']
+    if not hiero:
+        W = numpy.concatenate([norm_weight(nin,dim),
+                               norm_weight(nin,dim),
+                               norm_weight(nin,dim),
+                               norm_weight(nin,dim)], axis=1)
+        params[_p(prefix,'W')] = W
+    U = numpy.concatenate([ortho_weight(dim),
+                           ortho_weight(dim),
+                           ortho_weight(dim),
+                           ortho_weight(dim)], axis=1)
+    params[_p(prefix,'U')] = U
+    params[_p(prefix,'b')] = numpy.zeros((4 * dim,)).astype('float32')
+
+    return params
+
+
+# Conditional LSTM layer with Attention
+def param_init_lstm_cond(options, params, prefix='lstm_cond', nin=None, dim=None, dimctx=None):
+    if nin == None:
+        nin = options['dim']
+    if dim == None:
+        dim = options['dim']
+    if dimctx == None:
+        dimctx = options['dim']
+
+    params = param_init_lstm(options, params, prefix, nin, dim)
+
+    # context to LSTM
+    Wc = norm_weight(dimctx,dim*4)
+    params[_p(prefix,'Wc')] = Wc
+
+    # attention: prev -> hidden
+    Wi_att = norm_weight(nin,dimctx)
+    params[_p(prefix,'Wi_att')] = Wi_att
+
+    # attention: context -> hidden
+    Wc_att = norm_weight(dimctx)
+    params[_p(prefix,'Wc_att')] = Wc_att
+
+    # attention: LSTM -> hidden
+    Wd_att = norm_weight(dim,dimctx)
+    params[_p(prefix,'Wd_att')] = Wd_att
+
+    # attention: hidden bias
+    b_att = numpy.zeros((dimctx,)).astype('float32')
+    params[_p(prefix,'b_att')] = b_att
+
+    # attention: 
+    U_att = norm_weight(dimctx,1)
+    params[_p(prefix,'U_att')] = U_att
+    c_att = numpy.zeros((1,)).astype('float32')
+    params[_p(prefix, 'c_tt')] = c_att
+
+    return params
