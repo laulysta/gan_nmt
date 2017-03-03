@@ -50,5 +50,5 @@ def itemlist(tparams):
 
 
 # make prefix-appended name
-def _p(pp, name):
+def prefix_append(pp, name):
     return '{}_{}'.format(pp, name)

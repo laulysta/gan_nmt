@@ -36,11 +36,11 @@ def dropout_layer(state_before, use_noise, trng):
 
 
 def fflayer(tparams, state_below, options, prefix='rconv', activ='lambda x: tensor.tanh(x)', **kwargs):
-    return eval(activ)(tensor.dot(state_below, tparams[_p(prefix,'W')])+tparams[_p(prefix,'b')])
+    return eval(activ)(tensor.dot(state_below, tparams[prefix_append(prefix,'W')])+tparams[prefix_append(prefix,'b')])
 
 
 def fflayer_nb(tparams, state_below, options, prefix='ff_nb', activ='lambda x: tensor.tanh(x)', **kwargs):
-    return eval(activ)(tensor.dot(state_below, tparams[_p(prefix, 'W')]))
+    return eval(activ)(tensor.dot(state_below, tparams[prefix_append(prefix, 'W')]))
 
 
 def rnn_layer(tparams, state_below, options, prefix='rnn', mask=None, **kwargs):
@@ -50,7 +50,7 @@ def rnn_layer(tparams, state_below, options, prefix='rnn', mask=None, **kwargs):
     else:
         n_samples = 1
 
-    dim = tparams[_p(prefix,'Ux')].shape[0]
+    dim = tparams[prefix_append(prefix,'Ux')].shape[0]
 
     if mask == None:
         mask = tensor.alloc(1., state_below.shape[0], 1)
@@ -60,7 +60,7 @@ def rnn_layer(tparams, state_below, options, prefix='rnn', mask=None, **kwargs):
             return _x[:, :, n*dim:(n+1)*dim]
         return _x[:, n*dim:(n+1)*dim]
 
-    state_belowx = tensor.dot(state_below, tparams[_p(prefix, 'Wx')]) + tparams[_p(prefix, 'bx')]
+    state_belowx = tensor.dot(state_below, tparams[prefix_append(prefix, 'Wx')]) + tparams[prefix_append(prefix, 'bx')]
 
     def _step(m_, xx_, h_, Ux):
         preactx = tensor.dot(h_, Ux)
@@ -76,8 +76,8 @@ def rnn_layer(tparams, state_below, options, prefix='rnn', mask=None, **kwargs):
                                 sequences=[mask, state_belowx],
                                 outputs_info = [tensor.alloc(0., n_samples, dim)],
                                                 #None, None, None, None],
-                                non_sequences=[tparams[_p(prefix, 'Ux')]], 
-                                name=_p(prefix, '_layers'),
+                                non_sequences=[tparams[prefix_append(prefix, 'Ux')]], 
+                                name=prefix_append(prefix, '_layers'),
                                 n_steps=nsteps,
                                 profile=profile)
     rval = [rval]
@@ -101,7 +101,7 @@ def rnn_cond_layer(tparams, state_below, options, prefix='rnn', mask=None, conte
     if mask == None:
         mask = tensor.alloc(1., state_below.shape[0], 1)
 
-    dim = tparams[_p(prefix, 'Ux')].shape[0]
+    dim = tparams[prefix_append(prefix, 'Ux')].shape[0]
 
     # initial/previous state
     if init_state == None:
@@ -109,13 +109,13 @@ def rnn_cond_layer(tparams, state_below, options, prefix='rnn', mask=None, conte
 
     # projected context 
     assert context.ndim == 3, 'Context must be 3-d: #annotation x #sample x dim'
-    pctx_ = tensor.dot(context, tparams[_p(prefix,'Wc_att')]) + tparams[_p(prefix,'b_att')]
-    pctx_ += tparams[_p(prefix,'b_att')]
+    pctx_ = tensor.dot(context, tparams[prefix_append(prefix,'Wc_att')]) + tparams[prefix_append(prefix,'b_att')]
+    pctx_ += tparams[prefix_append(prefix,'b_att')]
 
     # projected x
-    state_belowx = tensor.dot(state_below, tparams[_p(prefix, 'Wx')]) + tparams[_p(prefix, 'bx')]
-    state_belowx += tparams[_p(prefix, 'bx')]
-    state_belowc = tensor.dot(state_below, tparams[_p(prefix, 'Wi_att')])
+    state_belowx = tensor.dot(state_below, tparams[prefix_append(prefix, 'Wx')]) + tparams[prefix_append(prefix, 'bx')]
+    state_belowx += tparams[prefix_append(prefix, 'bx')]
+    state_belowc = tensor.dot(state_below, tparams[prefix_append(prefix, 'Wi_att')])
 
     def _slice(_x, n, dim):
         if _x.ndim == 3:
@@ -149,11 +149,11 @@ def rnn_cond_layer(tparams, state_below, options, prefix='rnn', mask=None, conte
 
     if one_step:
         rval = _step(mask, state_belowx, state_belowc, init_state, None, None, 
-                     pctx_, tparams[_p(prefix,'Wd_att')],
-                     tparams[_p(prefix,'U_att')],
-                     tparams[_p(prefix, 'c_tt')],
-                     tparams[_p(prefix, 'Ux')],
-                     tparams[_p(prefix, 'Wcx')] )
+                     pctx_, tparams[prefix_append(prefix,'Wd_att')],
+                     tparams[prefix_append(prefix,'U_att')],
+                     tparams[prefix_append(prefix, 'c_tt')],
+                     tparams[prefix_append(prefix, 'Ux')],
+                     tparams[prefix_append(prefix, 'Wcx')] )
     else:
         rval, updates = theano.scan(_step,
                                     sequences=[mask, state_belowx, state_belowc],
@@ -163,13 +163,13 @@ def rnn_cond_layer(tparams, state_below, options, prefix='rnn', mask=None, conte
                                                     #None, None, None, 
                                                     #None, None],
                                     non_sequences=[pctx_,
-                                                   tparams[_p(prefix,'Wd_att')],
-                                                   tparams[_p(prefix,'U_att')],
-                                                   tparams[_p(prefix, 'c_tt')],
-                                                   tparams[_p(prefix, 'Ux')],
-                                                   tparams[_p(prefix, 'Wcx')]
+                                                   tparams[prefix_append(prefix,'Wd_att')],
+                                                   tparams[prefix_append(prefix,'U_att')],
+                                                   tparams[prefix_append(prefix, 'c_tt')],
+                                                   tparams[prefix_append(prefix, 'Ux')],
+                                                   tparams[prefix_append(prefix, 'Wcx')]
                                                    ],
-                                    name=_p(prefix, '_layers'),
+                                    name=prefix_append(prefix, '_layers'),
                                     n_steps=nsteps,
                                     profile=profile)
     return rval
@@ -189,14 +189,14 @@ def rnn_hiero_layer(tparams, context, options, prefix='rnn_hiero', context_mask=
     else:
         mask = context_mask
 
-    dim = tparams[_p(prefix, 'Ux')].shape[0]
+    dim = tparams[prefix_append(prefix, 'Ux')].shape[0]
 
     # initial/previous state
     init_state = tensor.alloc(0., n_samples, dim)
 
     # projected context 
     assert context.ndim == 3, 'Context must be 3-d: #annotation x #sample x dim'
-    pctx_ = tensor.dot(context, tparams[_p(prefix,'Wc_att')]) + tparams[_p(prefix,'b_att')]
+    pctx_ = tensor.dot(context, tparams[prefix_append(prefix,'Wc_att')]) + tparams[prefix_append(prefix,'b_att')]
 
     def _slice(_x, n, dim):
         if _x.ndim == 3:
@@ -241,15 +241,15 @@ def rnn_hiero_layer(tparams, context, options, prefix='rnn_hiero', context_mask=
                                                 #None, None, None, 
                                                 #None, None],
                                 non_sequences=[pctx_,
-                                               tparams[_p(prefix,'Wd_att')],
-                                               tparams[_p(prefix,'U_att')],
-                                               tparams[_p(prefix, 'c_tt')],
-                                               tparams[_p(prefix, 'Ux')],
-                                               tparams[_p(prefix, 'Wx')],
-                                               tparams[_p(prefix, 'bx')],
-                                               tparams[_p(prefix, 'W_st')],
-                                               tparams[_p(prefix, 'b_st')]],
-                                name=_p(prefix, '_layers'),
+                                               tparams[prefix_append(prefix,'Wd_att')],
+                                               tparams[prefix_append(prefix,'U_att')],
+                                               tparams[prefix_append(prefix, 'c_tt')],
+                                               tparams[prefix_append(prefix, 'Ux')],
+                                               tparams[prefix_append(prefix, 'Wx')],
+                                               tparams[prefix_append(prefix, 'bx')],
+                                               tparams[prefix_append(prefix, 'W_st')],
+                                               tparams[prefix_append(prefix, 'b_st')]],
+                                name=prefix_append(prefix, '_layers'),
                                 n_steps=nsteps,
                                 profile=profile)
 
@@ -264,7 +264,7 @@ def gru_layer(tparams, state_below, options, prefix='gru', mask=None, **kwargs):
     else:
         n_samples = 1
 
-    dim = tparams[_p(prefix,'Ux')].shape[1]
+    dim = tparams[prefix_append(prefix,'Ux')].shape[1]
 
     if mask == None:
         mask = tensor.alloc(1., state_below.shape[0], 1)
@@ -274,10 +274,10 @@ def gru_layer(tparams, state_below, options, prefix='gru', mask=None, **kwargs):
             return _x[:, :, n*dim:(n+1)*dim]
         return _x[:, n*dim:(n+1)*dim]
 
-    state_below_ = tensor.dot(state_below, tparams[_p(prefix, 'W')]) + tparams[_p(prefix, 'b')]
-    state_belowx = tensor.dot(state_below, tparams[_p(prefix, 'Wx')]) + tparams[_p(prefix, 'bx')]
-    U = tparams[_p(prefix, 'U')]
-    Ux = tparams[_p(prefix, 'Ux')]
+    state_below_ = tensor.dot(state_below, tparams[prefix_append(prefix, 'W')]) + tparams[prefix_append(prefix, 'b')]
+    state_belowx = tensor.dot(state_below, tparams[prefix_append(prefix, 'Wx')]) + tparams[prefix_append(prefix, 'bx')]
+    U = tparams[prefix_append(prefix, 'U')]
+    Ux = tparams[prefix_append(prefix, 'Ux')]
 
     def _step_slice(m_, x_, xx_, h_, U, Ux):
         preact = tensor.dot(h_, U)
@@ -304,9 +304,9 @@ def gru_layer(tparams, state_below, options, prefix='gru', mask=None, **kwargs):
                                 sequences=seqs,
                                 outputs_info = [tensor.alloc(0., n_samples, dim)],
                                                 #None, None, None, None],
-                                non_sequences = [tparams[_p(prefix, 'U')], 
-                                                 tparams[_p(prefix, 'Ux')]],
-                                name=_p(prefix, '_layers'),
+                                non_sequences = [tparams[prefix_append(prefix, 'U')], 
+                                                 tparams[prefix_append(prefix, 'Ux')]],
+                                name=prefix_append(prefix, '_layers'),
                                 n_steps=nsteps,
                                 profile=profile,
                                 strict=True)
@@ -331,7 +331,7 @@ def gru_cond_simple_layer(tparams, state_below, options, prefix='gru', mask=None
     if mask is None:
         mask = tensor.alloc(1., state_below.shape[0], 1)
 
-    dim = tparams[_p(prefix, 'Ux')].shape[1]
+    dim = tparams[prefix_append(prefix, 'Ux')].shape[1]
 
     # initial/previous state
     if init_state == None:
@@ -339,8 +339,8 @@ def gru_cond_simple_layer(tparams, state_below, options, prefix='gru', mask=None
 
     # projected context 
     assert context.ndim == 2, 'Context must be 2-d: #sample x dim'
-    pctx_ = tensor.dot(context, tparams[_p(prefix,'Wc')])
-    pctxx_ = tensor.dot(context, tparams[_p(prefix,'Wcx')])
+    pctx_ = tensor.dot(context, tparams[prefix_append(prefix,'Wc')])
+    pctxx_ = tensor.dot(context, tparams[prefix_append(prefix,'Wcx')])
 
     def _slice(_x, n, dim):
         if _x.ndim == 3:
@@ -348,8 +348,8 @@ def gru_cond_simple_layer(tparams, state_below, options, prefix='gru', mask=None
         return _x[:, n*dim:(n+1)*dim]
 
     # projected x
-    state_belowx = tensor.dot(state_below, tparams[_p(prefix, 'Wx')]) + tparams[_p(prefix, 'bx')]
-    state_below_ = tensor.dot(state_below, tparams[_p(prefix, 'W')]) + tparams[_p(prefix, 'b')]
+    state_belowx = tensor.dot(state_below, tparams[prefix_append(prefix, 'Wx')]) + tparams[prefix_append(prefix, 'bx')]
+    state_below_ = tensor.dot(state_below, tparams[prefix_append(prefix, 'W')]) + tparams[prefix_append(prefix, 'b')]
 
     def _step_slice(m_, x_, xx_, h_, pctx_, pctxx_, U, Ux):
         preact = tensor.dot(h_, U)
@@ -375,8 +375,8 @@ def gru_cond_simple_layer(tparams, state_below, options, prefix='gru', mask=None
     seqs = [mask, state_below_, state_belowx]
     _step = _step_slice
 
-    shared_vars = [tparams[_p(prefix, 'U')],
-                   tparams[_p(prefix, 'Ux')]] 
+    shared_vars = [tparams[prefix_append(prefix, 'U')],
+                   tparams[prefix_append(prefix, 'Ux')]] 
 
     if one_step:
         rval = _step(*(seqs+[init_state, pctx_, pctxx_]+shared_vars))
@@ -386,7 +386,7 @@ def gru_cond_simple_layer(tparams, state_below, options, prefix='gru', mask=None
                                     outputs_info=[init_state], 
                                     non_sequences=[pctx_,
                                                    pctxx_]+shared_vars,
-                                    name=_p(prefix, '_layers'),
+                                    name=prefix_append(prefix, '_layers'),
                                     n_steps=nsteps,
                                     profile=profile,
                                     strict=True)
@@ -410,7 +410,7 @@ def gru_cond_layer(tparams, state_below, options, prefix='gru', mask=None, conte
     if mask is None:
         mask = tensor.alloc(1., state_below.shape[0], 1)
 
-    dim = tparams[_p(prefix, 'Wcx')].shape[1]
+    dim = tparams[prefix_append(prefix, 'Wcx')].shape[1]
 
     # initial/previous state
     if init_state is None:
@@ -418,7 +418,7 @@ def gru_cond_layer(tparams, state_below, options, prefix='gru', mask=None, conte
 
     # projected context
     assert context.ndim == 3, 'Context must be 3-d: #annotation x #sample x dim'
-    pctx_ = tensor.dot(context, tparams[_p(prefix, 'Wc_att')]) + tparams[_p(prefix, 'b_att')]
+    pctx_ = tensor.dot(context, tparams[prefix_append(prefix, 'Wc_att')]) + tparams[prefix_append(prefix, 'b_att')]
 
     def _slice(_x, n, dim):
         if _x.ndim == 3:
@@ -426,9 +426,9 @@ def gru_cond_layer(tparams, state_below, options, prefix='gru', mask=None, conte
         return _x[:, n * dim:(n + 1) * dim]
 
     # projected x
-    state_belowx = tensor.dot(state_below, tparams[_p(prefix, 'Wx')]) + tparams[_p(prefix, 'bx')]
-    state_below_ = tensor.dot(state_below, tparams[_p(prefix, 'W')]) + tparams[_p(prefix, 'b')]
-    #state_belowc = tensor.dot(state_below, tparams[_p(prefix, 'Wi_att')])
+    state_belowx = tensor.dot(state_below, tparams[prefix_append(prefix, 'Wx')]) + tparams[prefix_append(prefix, 'bx')]
+    state_below_ = tensor.dot(state_below, tparams[prefix_append(prefix, 'W')]) + tparams[prefix_append(prefix, 'b')]
+    #state_belowc = tensor.dot(state_below, tparams[prefix_append(prefix, 'Wi_att')])
     #import ipdb; ipdb.set_trace()
 
     def _step_slice(m_, x_, xx_, h_, ctx_, alpha_, pctx_, cc_,
@@ -485,17 +485,17 @@ def gru_cond_layer(tparams, state_below, options, prefix='gru', mask=None, conte
     #seqs = [mask, state_below_, state_belowx, state_belowc]
     _step = _step_slice
 
-    shared_vars = [tparams[_p(prefix, 'U')],
-                   tparams[_p(prefix, 'Wc')],
-                   tparams[_p(prefix, 'W_comb_att')],
-                   tparams[_p(prefix, 'U_att')],
-                   tparams[_p(prefix, 'c_tt')],
-                   tparams[_p(prefix, 'Ux')],
-                   tparams[_p(prefix, 'Wcx')],
-                   tparams[_p(prefix, 'U_nl')],
-                   tparams[_p(prefix, 'Ux_nl')],
-                   tparams[_p(prefix, 'b_nl')],
-                   tparams[_p(prefix, 'bx_nl')]]
+    shared_vars = [tparams[prefix_append(prefix, 'U')],
+                   tparams[prefix_append(prefix, 'Wc')],
+                   tparams[prefix_append(prefix, 'W_comb_att')],
+                   tparams[prefix_append(prefix, 'U_att')],
+                   tparams[prefix_append(prefix, 'c_tt')],
+                   tparams[prefix_append(prefix, 'Ux')],
+                   tparams[prefix_append(prefix, 'Wcx')],
+                   tparams[prefix_append(prefix, 'U_nl')],
+                   tparams[prefix_append(prefix, 'Ux_nl')],
+                   tparams[prefix_append(prefix, 'b_nl')],
+                   tparams[prefix_append(prefix, 'bx_nl')]]
 
     if one_step:
         rval = _step( * (seqs + [init_state, None, None, pctx_, context] + shared_vars))
@@ -506,7 +506,7 @@ def gru_cond_layer(tparams, state_below, options, prefix='gru', mask=None, conte
                                                   tensor.alloc(0., n_samples, context.shape[2]),
                                                   tensor.alloc(0., n_samples, context.shape[0])],
                                     non_sequences=[pctx_, context] + shared_vars,
-                                    name=_p(prefix, '_layers'),
+                                    name=prefix_append(prefix, '_layers'),
                                     n_steps=nsteps,
                                     profile=profile,
                                     strict=True)
@@ -528,14 +528,14 @@ def gru_hiero_layer(tparams, context, options, prefix='gru_hiero', context_mask=
     else:
         mask = context_mask
 
-    dim = tparams[_p(prefix, 'W_st')].shape[0]
+    dim = tparams[prefix_append(prefix, 'W_st')].shape[0]
 
     # initial/previous state
     init_state = tensor.alloc(0., n_samples, dim)
 
     # projected context 
     assert context.ndim == 3, 'Context must be 3-d: #annotation x #sample x dim'
-    pctx_ = tensor.dot(context, tparams[_p(prefix,'Wc_att')]) + tparams[_p(prefix,'b_att')]
+    pctx_ = tensor.dot(context, tparams[prefix_append(prefix,'Wc_att')]) + tparams[prefix_append(prefix,'b_att')]
 
     def _slice(_x, n, dim):
         if _x.ndim == 3:
@@ -592,17 +592,17 @@ def gru_hiero_layer(tparams, context, options, prefix='gru_hiero', context_mask=
                                                 #None, None],
                                 non_sequences=[pctx_, 
                                                context,
-                                               tparams[_p(prefix, 'U')],
-                                               tparams[_p(prefix, 'Wc')],
-                                               tparams[_p(prefix,'Wd_att')], 
-                                               tparams[_p(prefix,'U_att')], 
-                                               tparams[_p(prefix, 'c_tt')], 
-                                               tparams[_p(prefix, 'Ux')], 
-                                               tparams[_p(prefix, 'Wx')],
-                                               tparams[_p(prefix, 'bx')], 
-                                               tparams[_p(prefix, 'W_st')], 
-                                               tparams[_p(prefix, 'b_st')]],
-                                name=_p(prefix, '_layers'),
+                                               tparams[prefix_append(prefix, 'U')],
+                                               tparams[prefix_append(prefix, 'Wc')],
+                                               tparams[prefix_append(prefix,'Wd_att')], 
+                                               tparams[prefix_append(prefix,'U_att')], 
+                                               tparams[prefix_append(prefix, 'c_tt')], 
+                                               tparams[prefix_append(prefix, 'Ux')], 
+                                               tparams[prefix_append(prefix, 'Wx')],
+                                               tparams[prefix_append(prefix, 'bx')], 
+                                               tparams[prefix_append(prefix, 'W_st')], 
+                                               tparams[prefix_append(prefix, 'b_st')]],
+                                name=prefix_append(prefix, '_layers'),
                                 n_steps=nsteps,
                                 profile=profile,
                                 strict=True)
@@ -618,7 +618,7 @@ def lstm_layer(tparams, state_below, options, prefix='lstm', mask=None, **kwargs
     else:
         n_samples = 1
 
-    dim = tparams[_p(prefix,'U')].shape[0]
+    dim = tparams[prefix_append(prefix,'U')].shape[0]
 
     if mask == None:
         mask = tensor.alloc(1., state_below.shape[0], 1)
@@ -629,9 +629,9 @@ def lstm_layer(tparams, state_below, options, prefix='lstm', mask=None, **kwargs
         return _x[:, n*dim:(n+1)*dim]
 
     def _step(m_, x_, h_, c_):
-        preact = tensor.dot(h_, tparams[_p(prefix, 'U')])
+        preact = tensor.dot(h_, tparams[prefix_append(prefix, 'U')])
         preact += x_
-        preact += tparams[_p(prefix, 'b')]
+        preact += tparams[prefix_append(prefix, 'b')]
 
         i = tensor.nnet.sigmoid(_slice(preact, 0, dim))
         f = tensor.nnet.sigmoid(_slice(preact, 1, dim))
@@ -646,14 +646,14 @@ def lstm_layer(tparams, state_below, options, prefix='lstm', mask=None, **kwargs
 
         return h, c, i, f, o, preact
 
-    state_below = tensor.dot(state_below, tparams[_p(prefix, 'W')]) + tparams[_p(prefix, 'b')]
+    state_below = tensor.dot(state_below, tparams[prefix_append(prefix, 'W')]) + tparams[prefix_append(prefix, 'b')]
 
     rval, updates = theano.scan(_step, 
                                 sequences=[mask, state_below],
                                 outputs_info = [tensor.alloc(0., n_samples, dim),
                                                 tensor.alloc(0., n_samples, dim),
                                                 None, None, None, None],
-                                name=_p(prefix, '_layers'),
+                                name=prefix_append(prefix, '_layers'),
                                 n_steps=nsteps,
                                 profile=profile)
     return rval
@@ -677,7 +677,7 @@ def lstm_cond_layer(tparams, state_below, options, prefix='lstm', mask=None, con
     if mask == None:
         mask = tensor.alloc(1., state_below.shape[0], 1)
 
-    dim = tparams[_p(prefix, 'U')].shape[0]
+    dim = tparams[prefix_append(prefix, 'U')].shape[0]
 
     # initial/previous state
     if init_state == None:
@@ -688,11 +688,11 @@ def lstm_cond_layer(tparams, state_below, options, prefix='lstm', mask=None, con
 
     # projected context 
     assert context.ndim == 3, 'Context must be 3-d: #annotation x #sample x dim'
-    pctx_ = tensor.dot(context, tparams[_p(prefix,'Wc_att')]) + tparams[_p(prefix,'b_att')]
+    pctx_ = tensor.dot(context, tparams[prefix_append(prefix,'Wc_att')]) + tparams[prefix_append(prefix,'b_att')]
 
     # projected x
-    state_below = tensor.dot(state_below, tparams[_p(prefix, 'W')]) + tparams[_p(prefix, 'b')]
-    state_belowc = tensor.dot(state_below, tparams[_p(prefix, 'Wi_att')])
+    state_below = tensor.dot(state_below, tparams[prefix_append(prefix, 'W')]) + tparams[prefix_append(prefix, 'b')]
+    state_belowc = tensor.dot(state_below, tparams[prefix_append(prefix, 'Wi_att')])
 
     def _slice(_x, n, dim):
         if _x.ndim == 3:
@@ -702,11 +702,11 @@ def lstm_cond_layer(tparams, state_below, options, prefix='lstm', mask=None, con
     def _step(m_, x_, xc_, h_, c_, ctx_, alpha_, pctx_):
 
         # attention
-        pstate_ = tensor.dot(h_, tparams[_p(prefix,'Wd_att')])
+        pstate_ = tensor.dot(h_, tparams[prefix_append(prefix,'Wd_att')])
         pctx__ = pctx_ + pstate_[None,:,:] 
         pctx__ += xc_
         pctx__ = tensor.tanh(pctx__)
-        alpha = tensor.dot(pctx__, tparams[_p(prefix,'U_att')])+tparams[_p(prefix, 'c_tt')]
+        alpha = tensor.dot(pctx__, tparams[prefix_append(prefix,'U_att')])+tparams[prefix_append(prefix, 'c_tt')]
         alpha = alpha.reshape([alpha.shape[0], alpha.shape[1]])
         alpha = tensor.exp(alpha)
         if context_mask:
@@ -714,9 +714,9 @@ def lstm_cond_layer(tparams, state_below, options, prefix='lstm', mask=None, con
         alpha = alpha / alpha.sum(0, keepdims=True)
         ctx_ = (context * alpha[:,:,None]).sum(0) # current context
 
-        preact = tensor.dot(h_, tparams[_p(prefix, 'U')])
+        preact = tensor.dot(h_, tparams[prefix_append(prefix, 'U')])
         preact += x_
-        preact += tensor.dot(ctx_, tparams[_p(prefix, 'Wc')])
+        preact += tensor.dot(ctx_, tparams[prefix_append(prefix, 'Wc')])
 
         i = tensor.nnet.sigmoid(_slice(preact, 0, dim))
         f = tensor.nnet.sigmoid(_slice(preact, 1, dim))
@@ -742,7 +742,7 @@ def lstm_cond_layer(tparams, state_below, options, prefix='lstm', mask=None, con
                                                     None, None, None, 
                                                     None, None],
                                     non_sequences=[pctx_],
-                                    name=_p(prefix, '_layers'),
+                                    name=prefix_append(prefix, '_layers'),
                                     n_steps=nsteps,
                                     profile=profile)
     return rval
@@ -754,8 +754,8 @@ def param_init_fflayer(options, params, prefix='ff', nin=None, nout=None, ortho=
         nin = options['dim_proj']
     if nout == None:
         nout = options['dim_proj']
-    params[_p(prefix,'W')] = norm_weight(nin, nout, scale=0.01, ortho=ortho)
-    params[_p(prefix,'b')] = numpy.zeros((nout,)).astype('float32')
+    params[prefix_append(prefix,'W')] = norm_weight(nin, nout, scale=0.01, ortho=ortho)
+    params[prefix_append(prefix,'b')] = numpy.zeros((nout,)).astype('float32')
 
     return params
 
@@ -766,7 +766,7 @@ def param_init_fflayer_nb(options, params, prefix='ff_nb', nin=None, nout=None, 
         nin = options['dim_proj']
     if nout == None:
         nout = options['dim_proj']
-    params[_p(prefix,'W')] = norm_weight(nin, nout, scale=0.01, ortho=ortho)
+    params[prefix_append(prefix,'W')] = norm_weight(nin, nout, scale=0.01, ortho=ortho)
 
     return params
 
@@ -778,10 +778,10 @@ def param_init_rnn(options, params, prefix='rnn', nin=None, dim=None):
     if dim == None:
         dim = options['dim_proj']
     Wx = norm_weight(nin, dim)
-    params[_p(prefix,'Wx')] = Wx
+    params[prefix_append(prefix,'Wx')] = Wx
     Ux = ortho_weight(dim)
-    params[_p(prefix,'Ux')] = Ux
-    params[_p(prefix,'bx')] = numpy.zeros((dim,)).astype('float32')
+    params[prefix_append(prefix,'Ux')] = Ux
+    params[prefix_append(prefix,'bx')] = numpy.zeros((dim,)).astype('float32')
 
     return params
 
@@ -799,29 +799,29 @@ def param_init_rnn_cond(options, params, prefix='rnn_cond', nin=None, dim=None, 
 
     # context to LSTM
     Wcx = norm_weight(dimctx,dim)
-    params[_p(prefix,'Wcx')] = Wcx
+    params[prefix_append(prefix,'Wcx')] = Wcx
 
     # attention: prev -> hidden
     Wi_att = norm_weight(nin,dimctx)
-    params[_p(prefix,'Wi_att')] = Wi_att
+    params[prefix_append(prefix,'Wi_att')] = Wi_att
 
     # attention: context -> hidden
     Wc_att = norm_weight(dimctx)
-    params[_p(prefix,'Wc_att')] = Wc_att
+    params[prefix_append(prefix,'Wc_att')] = Wc_att
 
     # attention: LSTM -> hidden
     Wd_att = norm_weight(dim,dimctx)
-    params[_p(prefix,'Wd_att')] = Wd_att
+    params[prefix_append(prefix,'Wd_att')] = Wd_att
 
     # attention: hidden bias
     b_att = numpy.zeros((dimctx,)).astype('float32')
-    params[_p(prefix,'b_att')] = b_att
+    params[prefix_append(prefix,'b_att')] = b_att
 
     # attention: 
     U_att = norm_weight(dimctx,1)
-    params[_p(prefix,'U_att')] = U_att
+    params[prefix_append(prefix,'U_att')] = U_att
     c_att = numpy.zeros((1,)).astype('float32')
-    params[_p(prefix, 'c_tt')] = c_att
+    params[prefix_append(prefix, 'c_tt')] = c_att
 
     return params
 
@@ -838,27 +838,27 @@ def param_init_rnn_hiero(options, params, prefix='rnn_hiero', nin=None, dimctx=N
 
     # attention: context -> hidden
     Wc_att = norm_weight(dimctx)
-    params[_p(prefix,'Wc_att')] = Wc_att
+    params[prefix_append(prefix,'Wc_att')] = Wc_att
 
     # attention: LSTM -> hidden
     Wd_att = norm_weight(dim,dimctx)
-    params[_p(prefix,'Wd_att')] = Wd_att
+    params[prefix_append(prefix,'Wd_att')] = Wd_att
 
     # attention: hidden bias
     b_att = numpy.zeros((dimctx,)).astype('float32')
-    params[_p(prefix,'b_att')] = b_att
+    params[prefix_append(prefix,'b_att')] = b_att
 
     # attention: 
     U_att = norm_weight(dimctx,1)
-    params[_p(prefix,'U_att')] = U_att
+    params[prefix_append(prefix,'U_att')] = U_att
     c_att = numpy.zeros((1,)).astype('float32')
-    params[_p(prefix, 'c_tt')] = c_att
+    params[prefix_append(prefix, 'c_tt')] = c_att
 
     # stop probability:
     W_st = norm_weight(dim, 1)
-    params[_p(prefix,'W_st')] = W_st
+    params[prefix_append(prefix,'W_st')] = W_st
     b_st = numpy.zeros((1,)).astype('float32')
-    params[_p(prefix,'b_st')] = b_st
+    params[prefix_append(prefix,'b_st')] = b_st
 
     return params
 
@@ -870,19 +870,21 @@ def param_init_gru(options, params, prefix='gru', nin=None, dim=None, hiero=Fals
     if dim == None:
         dim = options['dim_proj']
     if not hiero:
-        W = numpy.concatenate([norm_weight(nin,dim),
-                               norm_weight(nin,dim)], axis=1)
-        params[_p(prefix,'W')] = W
-        params[_p(prefix,'b')] = numpy.zeros((2 * dim,)).astype('float32')
+        W = numpy.concatenate([norm_weight(nin, dim),
+                               norm_weight(nin, dim)],
+                              axis=1)
+
+        params[prefix_append(prefix, 'W')] = W
+        params[prefix_append(prefix, 'b')] = numpy.zeros((2 * dim,)).astype('float32')
     U = numpy.concatenate([ortho_weight(dim),
                            ortho_weight(dim)], axis=1)
-    params[_p(prefix,'U')] = U
+    params[prefix_append(prefix, 'U')] = U
 
     Wx = norm_weight(nin, dim)
-    params[_p(prefix,'Wx')] = Wx
+    params[prefix_append(prefix, 'Wx')] = Wx
     Ux = ortho_weight(dim)
-    params[_p(prefix,'Ux')] = Ux
-    params[_p(prefix,'bx')] = numpy.zeros((dim,)).astype('float32')
+    params[prefix_append(prefix, 'Ux')] = Ux
+    params[prefix_append(prefix, 'bx')] = numpy.zeros((dim,)).astype('float32')
 
     return params
 
@@ -895,27 +897,27 @@ def param_init_gru_nonlin(options, params, prefix='gru', nin=None, dim=None, hie
     if not hiero:
         W = numpy.concatenate([norm_weight(nin,dim),
                                norm_weight(nin,dim)], axis=1)
-        params[_p(prefix,'W')] = W
-        params[_p(prefix,'b')] = numpy.zeros((2 * dim,)).astype('float32')
+        params[prefix_append(prefix,'W')] = W
+        params[prefix_append(prefix,'b')] = numpy.zeros((2 * dim,)).astype('float32')
     U = numpy.concatenate([ortho_weight(dim),
                            ortho_weight(dim)], axis=1)
-    params[_p(prefix,'U')] = U
+    params[prefix_append(prefix,'U')] = U
 
     Wx = norm_weight(nin, dim)
-    params[_p(prefix,'Wx')] = Wx
+    params[prefix_append(prefix,'Wx')] = Wx
     Ux = ortho_weight(dim)
-    params[_p(prefix,'Ux')] = Ux
-    params[_p(prefix,'bx')] = numpy.zeros((dim,)).astype('float32')
+    params[prefix_append(prefix,'Ux')] = Ux
+    params[prefix_append(prefix,'bx')] = numpy.zeros((dim,)).astype('float32')
 
     
     U_nl = numpy.concatenate([ortho_weight(dim),
                               ortho_weight(dim)], axis=1)
-    params[_p(prefix,'U_nl')] = U_nl
-    params[_p(prefix,'b_nl')] = numpy.zeros((2 * dim,)).astype('float32')
+    params[prefix_append(prefix,'U_nl')] = U_nl
+    params[prefix_append(prefix,'b_nl')] = numpy.zeros((2 * dim,)).astype('float32')
 
     Ux_nl = ortho_weight(dim)
-    params[_p(prefix,'Ux_nl')] = Ux_nl
-    params[_p(prefix,'bx_nl')] = numpy.zeros((dim,)).astype('float32')
+    params[prefix_append(prefix,'Ux_nl')] = Ux_nl
+    params[prefix_append(prefix,'bx_nl')] = numpy.zeros((dim,)).astype('float32')
     
     return params
 
@@ -936,10 +938,10 @@ def param_init_gru_cond_simple(options, params, prefix='gru_cond', nin=None, dim
 
     # context to LSTM
     Wc = norm_weight(dimctx,dim*2)
-    params[_p(prefix,'Wc')] = Wc
+    params[prefix_append(prefix,'Wc')] = Wc
 
     Wcx = norm_weight(dimctx,dim)
-    params[_p(prefix,'Wcx')] = Wcx
+    params[prefix_append(prefix,'Wcx')] = Wcx
 
     return params
 
@@ -957,28 +959,28 @@ def param_init_gru_cond(options, params, prefix='gru_cond', nin=None, dim=None, 
 
     # context to LSTM
     Wc = norm_weight(dimctx, dim * 2)
-    params[_p(prefix, 'Wc')] = Wc
+    params[prefix_append(prefix, 'Wc')] = Wc
 
     Wcx = norm_weight(dimctx, dim)
-    params[_p(prefix, 'Wcx')] = Wcx
+    params[prefix_append(prefix, 'Wcx')] = Wcx
 
     # attention: combined -> hidden
     W_comb_att = norm_weight(dim, dimctx)
-    params[_p(prefix, 'W_comb_att')] = W_comb_att
+    params[prefix_append(prefix, 'W_comb_att')] = W_comb_att
 
     # attention: context -> hidden
     Wc_att = norm_weight(dimctx)
-    params[_p(prefix, 'Wc_att')] = Wc_att
+    params[prefix_append(prefix, 'Wc_att')] = Wc_att
 
     # attention: hidden bias
     b_att = numpy.zeros((dimctx,)).astype('float32')
-    params[_p(prefix, 'b_att')] = b_att
+    params[prefix_append(prefix, 'b_att')] = b_att
 
     # attention: 
     U_att = norm_weight(dimctx, 1)
-    params[_p(prefix, 'U_att')] = U_att
+    params[prefix_append(prefix, 'U_att')] = U_att
     c_att = numpy.zeros((1,)).astype('float32')
-    params[_p(prefix, 'c_tt')] = c_att
+    params[prefix_append(prefix, 'c_tt')] = c_att
 
     return params
 
@@ -995,31 +997,31 @@ def param_init_gru_hiero(options, params, prefix='gru_hiero', nin=None, dimctx=N
 
     # context to LSTM
     Wc = norm_weight(dimctx,dim*2)
-    params[_p(prefix,'Wc')] = Wc
+    params[prefix_append(prefix,'Wc')] = Wc
 
     # attention: context -> hidden
     Wc_att = norm_weight(dimctx)
-    params[_p(prefix,'Wc_att')] = Wc_att
+    params[prefix_append(prefix,'Wc_att')] = Wc_att
 
     # attention: LSTM -> hidden
     Wd_att = norm_weight(dim,dimctx)
-    params[_p(prefix,'Wd_att')] = Wd_att
+    params[prefix_append(prefix,'Wd_att')] = Wd_att
 
     # attention: hidden bias
     b_att = numpy.zeros((dimctx,)).astype('float32')
-    params[_p(prefix,'b_att')] = b_att
+    params[prefix_append(prefix,'b_att')] = b_att
 
     # attention: 
     U_att = norm_weight(dimctx,1)
-    params[_p(prefix,'U_att')] = U_att
+    params[prefix_append(prefix,'U_att')] = U_att
     c_att = numpy.zeros((1,)).astype('float32')
-    params[_p(prefix, 'c_tt')] = c_att
+    params[prefix_append(prefix, 'c_tt')] = c_att
 
     # stop probability:
     W_st = norm_weight(dim, 1)
-    params[_p(prefix,'W_st')] = W_st
+    params[prefix_append(prefix,'W_st')] = W_st
     b_st = -0. * numpy.ones((1,)).astype('float32')
-    params[_p(prefix,'b_st')] = b_st
+    params[prefix_append(prefix,'b_st')] = b_st
 
     return params
 
@@ -1035,13 +1037,13 @@ def param_init_lstm(options, params, prefix='lstm', nin=None, dim=None, hiero=Fa
                                norm_weight(nin,dim),
                                norm_weight(nin,dim),
                                norm_weight(nin,dim)], axis=1)
-        params[_p(prefix,'W')] = W
+        params[prefix_append(prefix,'W')] = W
     U = numpy.concatenate([ortho_weight(dim),
                            ortho_weight(dim),
                            ortho_weight(dim),
                            ortho_weight(dim)], axis=1)
-    params[_p(prefix,'U')] = U
-    params[_p(prefix,'b')] = numpy.zeros((4 * dim,)).astype('float32')
+    params[prefix_append(prefix,'U')] = U
+    params[prefix_append(prefix,'b')] = numpy.zeros((4 * dim,)).astype('float32')
 
     return params
 
@@ -1059,28 +1061,28 @@ def param_init_lstm_cond(options, params, prefix='lstm_cond', nin=None, dim=None
 
     # context to LSTM
     Wc = norm_weight(dimctx,dim*4)
-    params[_p(prefix,'Wc')] = Wc
+    params[prefix_append(prefix,'Wc')] = Wc
 
     # attention: prev -> hidden
     Wi_att = norm_weight(nin,dimctx)
-    params[_p(prefix,'Wi_att')] = Wi_att
+    params[prefix_append(prefix,'Wi_att')] = Wi_att
 
     # attention: context -> hidden
     Wc_att = norm_weight(dimctx)
-    params[_p(prefix,'Wc_att')] = Wc_att
+    params[prefix_append(prefix,'Wc_att')] = Wc_att
 
     # attention: LSTM -> hidden
     Wd_att = norm_weight(dim,dimctx)
-    params[_p(prefix,'Wd_att')] = Wd_att
+    params[prefix_append(prefix,'Wd_att')] = Wd_att
 
     # attention: hidden bias
     b_att = numpy.zeros((dimctx,)).astype('float32')
-    params[_p(prefix,'b_att')] = b_att
+    params[prefix_append(prefix,'b_att')] = b_att
 
     # attention: 
     U_att = norm_weight(dimctx,1)
-    params[_p(prefix,'U_att')] = U_att
+    params[prefix_append(prefix,'U_att')] = U_att
     c_att = numpy.zeros((1,)).astype('float32')
-    params[_p(prefix, 'c_tt')] = c_att
+    params[prefix_append(prefix, 'c_tt')] = c_att
 
     return params
