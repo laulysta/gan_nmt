@@ -24,6 +24,8 @@ import stan
 
 import inspect
 
+from utils import *
+
 theano.config.floatX = 'float32'
 profile = False
 
@@ -1732,7 +1734,7 @@ def train(dim_word=100, # word vector dimensionality
           dictionary=None, # word dictionary
           dictionary_src=None, # word dictionary
           use_dropout=False,
-          reload_=False,
+          reload_=False,    # Contains the name of the file to reload or false
           correlation_coeff=0.1,
           clip_c=0.):
 
@@ -1742,29 +1744,19 @@ def train(dim_word=100, # word vector dimensionality
     # model_options = locals().copy()
 
     if dictionary:
-        with open(dictionary, 'rb') as f:
-            word_dict = pkl.load(f)
-        word_idict = dict()
-        for kk, vv in word_dict.iteritems():
-            word_idict[vv] = kk
+        word_dict, word_idict = load_dictionary(dictionary)
 
     if dictionary_src:
-        with open(dictionary_src, 'rb') as f:
-            word_dict_src = pkl.load(f)
-        word_idict_src = dict()
-        for kk, vv in word_dict_src.iteritems():
-            word_idict_src[vv] = kk
-
-    # reload options
-    if reload_ and os.path.exists(saveto):
-        with open('%s.pkl'%saveto, 'rb') as f:
-            models_options = pkl.load(f)
-    #import ipdb; ipdb.set_trace()
-
+            word_dict_src, word_idict_src = load_dictionary(dictionary_src)
 
     print 'Loading data'
     load_data, prepare_data = get_dataset(dataset)
     train, valid, test = load_data(batch_size=batch_size)
+
+    # reload options
+    if reload_:
+        with open('{}.npz.pkl'.format(reload_), 'rb') as f:
+            models_options = pkl.load(f)
 
     print 'Building model'
     params = init_params(model_options)
