@@ -1724,7 +1724,7 @@ def train(dim_word=100, # word vector dimensionality
           optimizer='rmsprop', 
           batch_size = 16,
           valid_batch_size = 16,
-          saveto='model.npz',
+          saveto='saved_models/model.npz',
           validFreq=1000,
           saveFreq=1000, # save the parameters after every saveFreq updates
           sampleFreq=100, # generate some samples after every sampleFreq updates
@@ -2041,7 +2041,7 @@ if __name__ == '__main__':
           optimizer='adadelta',
           batch_size=16,
           valid_batch_size=16,
-          saveto='model.npz',
+          saveto='saved_models/model.npz',
           validFreq=1000,
           saveFreq=1000,
           sampleFreq=100,
