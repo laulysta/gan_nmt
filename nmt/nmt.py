@@ -2029,7 +2029,7 @@ if __name__ == '__main__':
           decoder='gru_cond',
           hiero=None,
           patience=10,
-          max_epochs=5000,
+          max_epochs=1000,
           dispFreq=100,
           decay_c=0.,
           alpha_c=0.,
