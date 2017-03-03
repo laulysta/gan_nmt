@@ -87,23 +87,6 @@ def get_layer(name):
     return (eval(fns[0]), eval(fns[1]))
 
 
-# some utilities
-def ortho_weight(ndim):
-    W = numpy.random.randn(ndim, ndim)
-    u, s, v = numpy.linalg.svd(W)
-    return u.astype('float32')
-
-
-def norm_weight(nin,nout=None, scale=0.01, ortho=True):
-    if nout == None:
-        nout = nin
-    if nout == nin and ortho:
-        W = ortho_weight(nin)
-    else:
-        W = scale * numpy.random.randn(nin, nout)
-    return W.astype('float32')
-
-
 def concatenate(tensor_list, axis=0):
     """
     Alternative implementation of `theano.tensor.concatenate`.
@@ -147,8 +130,6 @@ def concatenate(tensor_list, axis=0):
         offset += tt.shape[axis]
 
     return out
-
-
 
 
 # initialize all parameters

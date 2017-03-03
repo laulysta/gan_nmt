@@ -1,6 +1,7 @@
 import theano
 import theano.tensor as tensor
 import numpy
+from utils import *
 
 profile = False
 # layers: 'name': ('parameter initializer', 'feedforward')
