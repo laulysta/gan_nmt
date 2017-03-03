@@ -29,7 +29,6 @@ from layers import *
 from optimizers import *
 
 theano.config.floatX = 'float32'
-profile = False
 
 # datasets: 'name', 'load_data: returns iterator', 'prepare_data: some preprocessing'
 datasets = {'wmt14enfr': (wmt14enfr.load_data, wmt14enfr.prepare_data),

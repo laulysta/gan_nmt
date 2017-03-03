@@ -1,6 +1,8 @@
 import pickle as pkl
 import numpy
 
+profile = False
+
 
 def load_dictionary(dictionary):
     with open(dictionary, 'rb') as f:
