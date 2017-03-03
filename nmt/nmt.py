@@ -632,6 +632,8 @@ def train(dim_word=100,  # word vector dimensionality
                 saveto_list[-1] = 'epoch' + str(eidx) + '_' + 'nbUpd' + str(uidx) + '_' + saveto_list[-1]
                 saveName = '/'.join(saveto_list)
                 numpy.savez(saveName, history_errs=history_errs, **params)
+                print model_options
+                print saveName
                 pkl.dump(model_options, open('%s.pkl' % saveName, 'wb'))
                 print 'Done'
 
