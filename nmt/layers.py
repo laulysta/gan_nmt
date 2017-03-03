@@ -21,6 +21,14 @@ def _p(pp, name):
     return '%s_%s'%(pp, name)
 
 
+def tanh(x):
+    return tensor.tanh(x)
+
+
+def linear(x):
+    return x
+
+
 # dropout
 def dropout_layer(state_before, use_noise, trng):
     proj = tensor.switch(use_noise, 

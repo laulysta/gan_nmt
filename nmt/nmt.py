@@ -104,14 +104,6 @@ def norm_weight(nin,nout=None, scale=0.01, ortho=True):
     return W.astype('float32')
 
 
-def tanh(x):
-    return tensor.tanh(x)
-
-
-def linear(x):
-    return x
-
-
 def concatenate(tensor_list, axis=0):
     """
     Alternative implementation of `theano.tensor.concatenate`.
