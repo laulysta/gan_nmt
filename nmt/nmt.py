@@ -473,7 +473,8 @@ def train(dim_word=100,  # word vector dimensionality
           correlation_coeff=0.1,
           clip_c=0.):
 
-    model_options = inspect.currentframe().f_locals
+    model_options = copy.copy(inspect.currentframe().f_locals)
+
     # model_options = locals().copy()
     print model_options
     if dictionary:
