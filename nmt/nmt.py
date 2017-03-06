@@ -74,6 +74,7 @@ def init_params(options):
     # Encoder
     params = get_layer(options['encoder'])[0](options, params, prefix='encoder',
                                               nin=options['dim_word'], dim=options['dim'])
+
     ctxdim = options['dim']
     if not options['decoder'].endswith('simple'):
         ctxdim = options['dim'] * 2
@@ -98,10 +99,93 @@ def init_params(options):
     params = get_layer('ff_nb')[0](options, params, prefix='ff_nb_logit_ctx', nin=ctxdim, nout=options['dim_word'], ortho=False)
     params = get_layer('ff')[0](options, params, prefix='ff_logit', nin=options['dim_word'], nout=options['n_words'])
 
+    #Adversarial network
+    params = get_layer(options['encoder'])[0](options, params, prefix='encoder_adversarial',
+                                              nin=options['dim'] * 2, dim=options['dim'] * 2)
+    params = get_layer('ff')[0](options, params, prefix='ff1_adversarial', nin=options['dim'] * 2, nout=options['dim'] * 2, ortho=False)
+    params = get_layer('ff')[0](options, params, prefix='ff2_adversarial', nin=options['dim'] * 2, nout=options['dim'] * 2, ortho=False)
+    params = get_layer('ff')[0](options, params, prefix='ff_out_adversarial', nin=options['dim'] * 2, nout=1, ortho=False)
+
     return params
 
+def build_encoder_adversarial(tparams, options):
+    trng = RandomStreams(1234)
 
-# build a training model
+    # description string: #hidden_states x #samples
+    h_orig = tensor.matrix('h_orig', dtype='float32')
+    h_fake = tensor.matrix('h_fake', dtype='float32')
+    h_orig_mask = tensor.matrix('h_orig_mask', dtype='float32')
+    h_fake_mask = tensor.matrix('h_fake_mask', dtype='float32')
+
+    h_orig_r = h_orig[::-1]
+    h_fake_r = h_fake[::-1]
+    h_orig_r_mask = h_orig_mask[::-1]
+    h_fake_r_mask = h_fake_mask[::-1]
+
+    n_timesteps_orig = h_orig.shape[0]
+    n_timesteps_fake = h_fake.shape[0]
+
+    encoder = get_layer(options['encoder_adversarial'])[1]
+    proj_orig = encoder(tparams, h_orig, options, prefix='encoder_adersarial', mask=x_mask_orig)
+    proj_fake = encoder(tparams, h_fake, options, prefix='encoder_adersarial', mask=x_mask_fake)
+
+    proj_orig_r = encoder(tparams, h_orig_r, options, prefix='encoder_adersarial_r', mask=x_mask_orig_r)
+    proj_fake_r = encoder(tparams, h_fake_r, options, prefix='encoder_adersarial_r', mask=x_mask_fake_r)
+
+    B_orig = concatenate([proj_orig[0][-1], proj_orig_r[0][-1]], axis=proj_orig[0].ndim - 1)
+    B_fake = concatenate([proj_fake[0][-1], proj_fake_r[0][-1]], axis=proj_fake[0].ndim - 1)
+
+    inps = [h_orig, h_fake, h_orig_mask, h_fake_mask]
+    outs = [B_orig, B_fake]
+
+    encoder_adversarial = theano.function(inps, outs, name='encoder_adversarial', profile=profile)
+    return encoder_adversarial
+
+def build_discriminator_adversarial(tparams, options):
+    B_orig = tensor.matrix('B_orig', dtype='float32')
+    B_fake = tensor.matrix('B_fake', dtype='float32')
+
+    ff1 = get_layer(options['ff1_adversarial'])[1]
+    ff2 = get_layer(options['ff2_adversarial'])[1]
+    ff_out = get_layer(options['ff_out_adversarial'])[1]
+
+    D_orig = ff1(tparams, B_orig, options, prefix='ff_state', activ='relu')
+    D_orig = ff2(tparams, D_orig, options, prefix='ff_state', activ='relu')
+    D_orig = ff_out(tparams, D_orig, options, prefix='ff_state', activ='sigmoid')
+
+    D_fake = ff1(tparams, B_orig, options, prefix='ff_state', activ='relu')
+    D_fake = ff2(tparams, D_fake, options, prefix='ff_state', activ='relu')
+    D_fake = ff_out(tparams, D_fake, options, prefix='ff_state', activ='sigmoid')
+
+    inps = [B_orig, B_fake]
+    outs = [D_orig, D_fake]
+
+    discriminator_adversarial = theano.function(inps, outs, name='discriminator_adversarial', profile=profile)
+
+    return discriminator_adversarial
+
+
+def build_adversarial_discriminator_cost(tparams, options):
+    D_orig = tensor.matrix('D_orig', dtype='float32')
+    D_fake = tensor.matrix('D_fake', dtype='float32')
+
+    # Review
+    cost = -tensor.mean(D_orig * tensor.log(D_orig) + (1 - D_fake) * tensor.log(1 - D_fake))
+    inps = [D_orig, D_fake]
+    outs = [cost]
+
+    discriminator_adversarial_cost = theano.function(inps, outs, name='discriminator_adversarial_cost', profile=profile)
+    return discriminator_adversarial_cost
+
+
+def build_adversarial_generator_cost(encoder_adversarial, tparams, options):
+    D_fake = tensor.matrix('D_fake', dtype='float32')
+    cost = -tensor.mean((D_fake) * tensor.log(1 - D_fake))
+
+    adversarial_generator_cost = theano.function([D_fake], [cost], name='adversarial_generator_cost', profile=profile)
+    return adversarial_generator_cost
+
+
 def build_model(tparams, options):
     opt_ret = dict()
 
@@ -123,17 +207,17 @@ def build_model(tparams, options):
     # src_lengths = x_mask.sum(axis=0)
 
     emb = tparams['Wemb'][x.flatten()].reshape([n_timesteps, n_samples, options['dim_word']])
-    proj = get_layer(options['encoder'])[1](tparams, emb, options,
-                                            prefix='encoder',
-                                            mask=x_mask)
+    encoder = get_layer(options['encoder'])[1]
+
+    proj = encoder(tparams, emb, options, prefix='encoder', mask=x_mask)
+
     if options['decoder'].endswith('simple'):
         ctx = proj[0][-1]
         ctx_mean = ctx
     else:
         embr = tparams['Wemb'][xr.flatten()].reshape([n_timesteps, n_samples, options['dim_word']])
-        projr = get_layer(options['encoder'])[1](tparams, embr, options,
-                                                 prefix='encoder_r',
-                                                 mask=xr_mask)
+        encoder_r = get_layer(options['encoder'])[1]
+        projr = encoder_r(tparams, embr, options, prefix='encoder_r', mask=xr_mask)
         ctx = concatenate([proj[0], projr[0][::-1]], axis=proj[0].ndim - 1)
         if options['hiero']:
             # ctx = tensor.dot(ctx, tparams['W_hiero'])
@@ -146,9 +230,11 @@ def build_model(tparams, options):
         # initial state/cell
         # ctx_mean = ctx.mean(0)
         # ctx_mean = (ctx * x_mask[:,:,None]).sum(0) / x_mask.sum(0)[:,None]
+        # Get the last hidden states from the direct and reversed encoding
         ctx_mean = concatenate([proj[0][-1], projr[0][-1]], axis=proj[0].ndim - 2)
 
-    init_state = get_layer('ff')[1](tparams, ctx_mean, options, prefix='ff_state', activ='tanh')
+    ff_encoder_decoder = get_layer('ff')[1]
+    init_state = ff_encoder_decoder(tparams, ctx_mean, options, prefix='ff_state', activ='tanh')
     init_memory = None
 
     if options['encoder'] == 'lstm':
@@ -161,13 +247,10 @@ def build_model(tparams, options):
     emb = emb_shifted
 
     # decoder
-    proj = get_layer(options['decoder'])[1](tparams, emb, options,
-                                            prefix='decoder',
-                                            mask=y_mask, context=ctx,
-                                            context_mask=x_mask,
-                                            one_step=False,
-                                            init_state=init_state,
-                                            init_memory=init_memory)
+    decoder = get_layer(options['decoder'])[1]
+    proj = decoder(tparams, emb, options, prefix='decoder', mask=y_mask,
+                   context=ctx, context_mask=x_mask, one_step=False,
+                   init_state=init_state, init_memory=init_memory)
     proj_h = proj[0]
 
     if options['decoder'].endswith('simple'):
@@ -563,6 +646,8 @@ def train(dim_word=100,  # word vector dimensionality
     print 'Building optimizers...',
     # f_grad_shared, f_update = eval(optimizer)(lr, tparams, grads, inps, cost)
     f_update = eval(optimizer)(lr, tparams, grads, inps, cost)
+    #BUILD ADVERSARIAL OPTIMIZER
+    f_update_adversarial = eval(optimizer)(lr, tparams, grads_adversarial, cost_adversarial)
     print 'Done'
 
     print 'Optimization'
