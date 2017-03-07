@@ -140,19 +140,18 @@ def gru_layer(tparams, state_below, options, prefix='gru', mask=None, **kwargs):
         h = tensor.tanh(preactx)
 
         h = u * h_ + (1. - u) * h
-        h = m_[:,None] * h + (1. - m_)[:,None] * h_
+        h = m_[:, None] * h + (1. - m_)[:, None] * h_
 
-        return h#, r, u, preact, preactx
+        return h  #, r, u, preact, preactx
 
     seqs = [mask, state_below_, state_belowx]
     _step = _step_slice
 
-    rval, updates = theano.scan(_step, 
+    rval, updates = theano.scan(_step,
                                 sequences=seqs,
-                                outputs_info = [tensor.alloc(0., n_samples, dim)],
-                                                #None, None, None, None],
-                                non_sequences = [tparams[prefix_append(prefix, 'U')], 
-                                                 tparams[prefix_append(prefix, 'Ux')]],
+                                outputs_info=[tensor.alloc(0., n_samples, dim)],
+                                non_sequences=[tparams[prefix_append(prefix, 'U')],
+                                               tparams[prefix_append(prefix, 'Ux')]],
                                 name=prefix_append(prefix, '_layers'),
                                 n_steps=nsteps,
                                 profile=profile,
