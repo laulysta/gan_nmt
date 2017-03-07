@@ -180,7 +180,7 @@ def build_adversarial_discriminator_cost(tparams, options):
 
 def build_adversarial_generator_cost(encoder_adversarial, tparams, options):
     D_fake = tensor.matrix('D_fake', dtype='float32')
-    cost = -tensor.mean((D_fake) * tensor.log(1 - D_fake))
+    cost = -tensor.mean(tensor.log(D_fake))
 
     adversarial_generator_cost = theano.function([D_fake], [cost], name='adversarial_generator_cost', profile=profile)
     return adversarial_generator_cost
@@ -281,6 +281,7 @@ def build_model(tparams, options):
     cost = -tensor.log(probs.flatten()[y_flat_idx])
     cost = cost.reshape([y.shape[0], y.shape[1]])
     cost = (cost * y_mask).sum(0)
+
 
     return trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost
 
@@ -439,7 +440,7 @@ def gen_sample(tparams, f_init, f_next, x, options, trng=None, k=1, maxlen=30, m
             cand_scores = hyp_scores[:,None] - numpy.log(next_p)
             cand_flat = cand_scores.flatten()
             ranks_flat = cand_flat.argsort()[:(k-dead_k)]
-            
+
             voc_size = next_p.shape[1]
             trans_indices = ranks_flat / voc_size
             word_indices = ranks_flat % voc_size
@@ -450,7 +451,7 @@ def gen_sample(tparams, f_init, f_next, x, options, trng=None, k=1, maxlen=30, m
             new_hyp_states = []
             if options['decoder'].startswith('lstm'):
                 new_hyp_memories = []
-            
+
             for idx, [ti, wi] in enumerate(zip(trans_indices, word_indices)):
                 new_hyp_samples.append(hyp_samples[ti]+[wi])
                 new_hyp_scores[idx] = copy.copy(costs[idx])
