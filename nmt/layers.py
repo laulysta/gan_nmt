@@ -237,7 +237,8 @@ def gru_cond_layer(tparams, state_below, options, prefix='gru', mask=None, conte
     #state_belowc = tensor.dot(state_below, tparams[prefix_append(prefix, 'Wi_att')])
     #import ipdb; ipdb.set_trace()
 
-    def _step_slice(m_, x_, xx_, h_, ctx_, alpha_, pctx_, cc_,
+    # preactx2_m1 should be the value of preactx2 at time t minus 1
+    def _step_slice(m_, x_, xx_, h_, ctx_, alpha_, preactx2_m1, pctx_, cc_,
                     U, Wc, W_comb_att, U_att, c_tt, Ux, Wcx, U_nl, Ux_nl, b_nl, bx_nl):
 
         preact1 = tensor.dot(h_, U)
