@@ -23,6 +23,7 @@ import trans_enhi
 import stan
 
 import inspect
+import time
 
 from utils import *
 from layers import *
@@ -474,9 +475,8 @@ def train(dim_word=100,  # word vector dimensionality
           clip_c=0.):
 
     model_options = copy.copy(inspect.currentframe().f_locals)
-
     # model_options = locals().copy()
-    print model_options
+
     if dictionary:
         word_dict, word_idict = load_dictionary(dictionary)
 
@@ -614,7 +614,8 @@ def train(dim_word=100,  # word vector dimensionality
 
             if numpy.isnan(cost) or numpy.isinf(cost):
                 print 'NaN detected'
-                return 1., 1., 1.
+                raise ValueError('NaN detected')
+                #return 1., 1., 1.
 
             if numpy.mod(uidx, dispFreq) == 0:
                 print 'Epoch ', eidx, 'Update ', uidx, 'Cost ', cost, 'UD ', ud
@@ -753,13 +754,15 @@ def train(dim_word=100,  # word vector dimensionality
 
 
 if __name__ == '__main__':
+    
+    start_time = time.time()
     train(dim_word=100,
           dim=1000,
           encoder='gru',
           decoder='gru_cond',
           hiero=None,
           patience=10,
-          max_epochs=2,
+          max_epochs=100,
           dispFreq=100,
           decay_c=0.,
           alpha_c=0.,
@@ -782,3 +785,6 @@ if __name__ == '__main__':
           reload_=False,
           correlation_coeff=0.1,
           clip_c=1.)
+
+    end_time = time.time()
+    print'{} epochs in {} seconds'.format(max_epochs, end_time - start_time)
