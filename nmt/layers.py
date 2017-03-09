@@ -238,7 +238,7 @@ def gru_cond_layer(tparams, state_below, options, prefix='gru', mask=None, conte
     #import ipdb; ipdb.set_trace()
 
     # preactx2_m1 should be the value of preactx2 at time t minus 1
-    def _step_slice(m_, x_, xx_, h_, ctx_, alpha_, preactx2_m1, pctx_, cc_,
+    def _step_slice(m_, x_, xx_, h_, ctx_, alpha_, preactx2, preactx2_m1, pctx_, cc_,
                     U, Wc, W_comb_att, U_att, c_tt, Ux, Wcx, U_nl, Ux_nl, b_nl, bx_nl):
 
         preact1 = tensor.dot(h_, U)
@@ -307,24 +307,24 @@ def gru_cond_layer(tparams, state_below, options, prefix='gru', mask=None, conte
                    tparams[prefix_append(prefix, 'bx_nl')]]
 
     if one_step:
-        rval = _step( * (seqs + [init_state, None, None, pctx_, context] + shared_vars))
+        [h2, ctx_, alpha.T, preactx2] = _step( * (seqs + [init_state, None, None, pctx_, context] + shared_vars))
     else:
-        rval, updates = theano.scan(_step,
-                                    sequences=seqs,
-                                    outputs_info=[init_state,
-                                                  tensor.alloc(0., n_samples, context.shape[2]),
-                                                  tensor.alloc(0., n_samples, context.shape[0]),
-                                                  dict(initial=tensor.alloc(0., n_samples, init_state.shape[1]), taps=[-1])],
-                                    non_sequences=[pctx_, context] + shared_vars,
-                                    name=prefix_append(prefix, '_layers'),
-                                    n_steps=nsteps,
-                                    profile=profile,
+        [h2, ctx_, alpha.T, preactx2], updates = theano.scan(_step,
+                                                             sequences=seqs,
+                                                             outputs_info=[init_state,
+                                                                           tensor.alloc(0., n_samples, context.shape[2]),
+                                                                           tensor.alloc(0., n_samples, context.shape[0]),
+                                                                           dict(initial=tensor.alloc(0., n_samples, init_state.shape[1]), taps=[-1])],
+                                                             non_sequences=[pctx_, context] + shared_vars,
+                                                             name=prefix_append(prefix, '_layers'),
+                                                             n_steps=nsteps,
+                                                             profile=profile,
                                     strict=True)
                                     #TODO: CHECK THE DIMENSION OF THE INITIAL STATE
                                     # FOR PREACTX2 (LAST RETURNED VALUE OF SCAN)
     # output info: initial state for the scan function
     # 
-    return rval
+    return [h2, ctx_, alpha.T, preactx2]
 
 
 

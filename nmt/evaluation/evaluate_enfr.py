@@ -31,9 +31,9 @@ if __name__ == '__main__':
         'model': ['model_lstm.npz'],
         'dim_word': [64],
         'dim': [128],
-        'n-words': [20000], 
+        'n-words': [20000],
         'optimizer': ['adadelta'],
-        'decay-c': [0.], 
+        'decay-c': [0.],
         'use-dropout': [0],
         'learning-rate': [0.0001],
         'reload': [False]})
