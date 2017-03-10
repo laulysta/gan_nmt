@@ -91,6 +91,7 @@ def main(model, dictionary, dictionary_target, source_file, saveto, k=5, normali
     def _send_jobs(fname):
         with open(fname, 'r') as f:
             for idx, line in enumerate(f):
+                print line
                 if chr_level:
                     words = list(line.decode('utf-8').strip())
                 else:
@@ -139,3 +140,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     main(args.model, args.dictionary, args.dictionary_target, args.source, args.saveto, k=args.k, n_process=args.p, chr_level=args.c)
+
+
+# CALL
+# python translate.py saved_models/epoch1_nbUpd62000_model.npz ../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl ../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl ../data/small_europarl_v7_enfr_txt/valid.fr.txt ./translation.txt
+#  THEANO_FLAGS=device=gpu,floatX=float32 python translate.py saved_models/epoch1_nbUpd62000_model.npz ../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl ../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl ../data/vocab_and_data_small_europarl_v7_enfr/bin_valid.fr.h5 ./translation.txt

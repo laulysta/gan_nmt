@@ -47,7 +47,8 @@ def get_dataset(name):
 def init_tparams(params):
     tparams = OrderedDict()
     for kk, pp in params.iteritems():
-        tparams[kk] = theano.shared(params[kk], name=kk)
+        if not 'adversarial' in kk:
+            tparams[kk] = theano.shared(params[kk], name=kk)
     return tparams
 
 
@@ -845,7 +846,7 @@ if __name__ == '__main__':
           decoder='gru_cond',
           hiero=None,
           patience=10,
-          max_epochs=2,
+          max_epochs=5,
           dispFreq=100,
           decay_c=0.,
           alpha_c=0.,
@@ -865,6 +866,6 @@ if __name__ == '__main__':
           dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
           dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
           use_dropout=False,
-          reload_=False,
+          reload_='saved_models/epoch1_nbUpd62000_model',
           correlation_coeff=0.1,
           clip_c=1.)
