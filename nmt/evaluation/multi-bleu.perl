@@ -2,7 +2,7 @@
 
 # Call from python
 # bleu_score = check_output('perl multi-bleu.perl ' + txt_trg_path + ' < ' +  txt_trans_result_path , shell=True)
-
+# bleu_score = check_output('perl ./evaluation/multi-bleu.perl ' + ../data/small_europarl_v7_enfr_txt/valid_small.en.txt + ' < ' +  './translation.txt' , shell=True)
 
 # $Id$
 use strict;
