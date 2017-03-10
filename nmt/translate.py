@@ -37,7 +37,7 @@ def translate_model(queue, rqueue, pid, model, options, k, normalize):
 
     while True:
         req = queue.get()
-        if req == None:
+        if req is None:
             break
 
         idx, x = req[0], req[1]

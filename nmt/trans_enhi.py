@@ -28,7 +28,7 @@ def prepare_data(seqs_x, seqs_y, maxlen=None, n_words_src=41, n_words=82):
     lengths_x = [len(s) for s in seqs_x]
     lengths_y = [len(s) for s in seqs_y]
 
-    if maxlen != None:
+    if maxlen is not None:
         new_seqs_x = []
         new_seqs_y = []
         new_lengths_x = []
