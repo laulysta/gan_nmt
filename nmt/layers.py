@@ -307,14 +307,14 @@ def gru_cond_layer(tparams, state_below, options, prefix='gru', mask=None, conte
                    tparams[prefix_append(prefix, 'bx_nl')]]
 
     if one_step:
-        rval = _step( * (seqs + [init_state, None, None, pctx_, context] + shared_vars))
+        rval = _step( * (seqs + [init_state, None, None, None, pctx_, context] + shared_vars))
     else:
         rval, updates = theano.scan(_step,
                                     sequences=seqs,
                                     outputs_info=[init_state,
                                                   tensor.alloc(0., n_samples, context.shape[2]),
                                                   tensor.alloc(0., n_samples, context.shape[0]),
-                                                  dict(initial=tensor.alloc(0., n_samples, init_state.shape[1]), taps=[-1])],
+                                                  dict(initial=tensor.alloc(0., n_samples, init_state.shape[1]), taps=None)],
                                     non_sequences=[pctx_, context] + shared_vars,
                                     name=prefix_append(prefix, '_layers'),
                                     n_steps=nsteps,
