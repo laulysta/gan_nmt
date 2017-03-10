@@ -100,13 +100,6 @@ def init_params(options):
     params = get_layer('ff_nb')[0](options, params, prefix='ff_nb_logit_ctx', nin=ctxdim, nout=options['dim_word'], ortho=False)
     params = get_layer('ff')[0](options, params, prefix='ff_logit', nin=options['dim_word'], nout=options['n_words'])
 
-    #Adversarial network
-    params = get_layer(options['encoder'])[0](options, params, prefix='encoder_adversarial',
-                                              nin=options['dim'] * 2, dim=options['dim'] * 2)
-    params = get_layer('ff')[0](options, params, prefix='ff1_adversarial', nin=options['dim'] * 2, nout=options['dim'] * 2, ortho=False)
-    params = get_layer('ff')[0](options, params, prefix='ff2_adversarial', nin=options['dim'] * 2, nout=options['dim'] * 2, ortho=False)
-    params = get_layer('ff')[0](options, params, prefix='ff_out_adversarial', nin=options['dim'] * 2, nout=1, ortho=False)
-
     return params
 
 def build_encoder_adversarial(tparams, options):
