@@ -308,9 +308,9 @@ def gru_cond_layer(tparams, state_below, options, prefix='gru', mask=None, conte
                    tparams[prefix_append(prefix, 'bx_nl')]]
 
     if one_step:
-        [h2, ctx_, alpha.T, preactx2] = _step( * (seqs + [init_state, None, None, pctx_, context] + shared_vars))
+        [h2, ctx_, alphaT, preactx2] = _step( * (seqs + [init_state, None, None, pctx_, context] + shared_vars))
     else:
-        [h2, ctx_, alpha.T, preactx2], updates = theano.scan(_step,
+        [h2, ctx_, alphaT, preactx2], updates = theano.scan(_step,
                                                              sequences=seqs,
                                                              outputs_info=[init_state,
                                                                            tensor.alloc(0., n_samples, context.shape[2]),
@@ -324,7 +324,7 @@ def gru_cond_layer(tparams, state_below, options, prefix='gru', mask=None, conte
                                     #TODO: CHECK THE DIMENSION OF THE INITIAL STATE
                                     # FOR PREACTX2 (LAST RETURNED VALUE OF SCAN)
     # output info: initial state for the scan function
-    return [h2, ctx_, alpha.T, preactx2]
+    return [h2, ctx_, alphaT, preactx2]
 
 
 
