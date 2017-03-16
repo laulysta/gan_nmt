@@ -417,8 +417,8 @@ def gru_cond_layer_FR(tparams, state_below, options, prefix='gru', mask=None, co
 
         # compute word logits
         logit_lstm = disconnected_grad(get_layer('ff')[1](tparams, h2, options, prefix='ff_logit_lstm', activ='linear'))
-        logit_prev = disconnected_grad(get_layer('ff_nb')[1](tparams, emb, options, prefix='ff_nb_logit_prev', activ='linear'))
-        logit_ctx = disconnected_grad(get_layer('ff_nb')[1](tparams, ctxs, options, prefix='ff_nb_logit_ctx', activ='linear'))
+        logit_prev = disconnected_grad(get_layer('ff_nb')[1](tparams, x_, options, prefix='ff_nb_logit_prev', activ='linear'))
+        logit_ctx = disconnected_grad(get_layer('ff_nb')[1](tparams, ctx_, options, prefix='ff_nb_logit_ctx', activ='linear'))
 
         logit = disconnected_grad(tensor.tanh(logit_lstm + logit_prev + logit_ctx))
         logit = disconnected_grad(get_layer('ff')[1](tparams, logit, options, prefix='ff_logit', activ='linear'))
