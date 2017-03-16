@@ -101,7 +101,7 @@ def init_params(options):
     params = get_layer('ff')[0](options, params, prefix='ff_logit', nin=options['dim_word'], nout=options['n_words'])
 
     # decoder: Free Running Mode
-    params = get_layer(options['gru_cond_FR'])[0](options, params, prefix='decoder_FR',
+    params = get_layer(options['decoder_FR'])[0](options, params, prefix='decoder_FR',
                                                   nin=options['dim_word'], dim=options['dim'],
                                                   dimctx=ctxdim)
 
@@ -577,7 +577,7 @@ def train(dim_word=100,  # word vector dimensionality
           clip_c=0.):
 
     model_options = copy.copy(inspect.currentframe().f_locals)
-
+    model_options['decoder_FR'] = 'gru_cond_FR'
     # model_options = locals().copy()
     if dictionary:
         word_dict, word_idict = load_dictionary(dictionary)
