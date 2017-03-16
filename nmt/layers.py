@@ -328,47 +328,6 @@ def gru_cond_layer(tparams, state_below, options, prefix='gru', mask=None, conte
 
 
 def gru_cond_layer_FR(tparams, state_below, options, prefix='gru', mask=None, context=None, one_step=False, init_memory=None, init_state=None, context_mask=None, **kwargs):
-    '''
-    GRU decoder layer in [F]ree [R]unning mode
-    '''
-    if nin is None:
-        nin = options['dim']
-    if dim is None:
-        dim = options['dim']
-    if dimctx is None:
-        dimctx = options['dim']
-
-    params = param_init_gru_nonlin(options, params, prefix, nin=nin, dim=dim)
-
-    # context to LSTM
-    Wc = norm_weight(dimctx, dim * 2)
-    params[prefix_append(prefix, 'Wc')] = Wc
-
-    Wcx = norm_weight(dimctx, dim)
-    params[prefix_append(prefix, 'Wcx')] = Wcx
-
-    # attention: combined -> hidden
-    W_comb_att = norm_weight(dim, dimctx)
-    params[prefix_append(prefix, 'W_comb_att')] = W_comb_att
-
-    # attention: context -> hidden
-    Wc_att = norm_weight(dimctx)
-    params[prefix_append(prefix, 'Wc_att')] = Wc_att
-
-    # attention: hidden bias
-    b_att = numpy.zeros((dimctx,)).astype('float32')
-    params[prefix_append(prefix, 'b_att')] = b_att
-
-    # attention: 
-    U_att = norm_weight(dimctx, 1)
-    params[prefix_append(prefix, 'U_att')] = U_att
-    c_att = numpy.zeros((1,)).astype('float32')
-    params[prefix_append(prefix, 'c_tt')] = c_att
-
-    return params
-
-
-def gru_cond_layer(tparams, state_below, options, prefix='gru', mask=None, context=None, one_step=False, init_memory=None, init_state=None, context_mask=None, **kwargs):
 
     assert context, 'Context must be provided'
 
