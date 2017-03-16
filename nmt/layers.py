@@ -238,7 +238,6 @@ def gru_cond_layer(tparams, state_below, options, prefix='gru', mask=None, conte
     #state_belowc = tensor.dot(state_below, tparams[prefix_append(prefix, 'Wi_att')])
     #import ipdb; ipdb.set_trace()
 
-    # preactx2_m1 should be the value of preactx2 at time t minus 1
     def _step_slice(m_, x_, xx_, h_, ctx_, alpha_, preactx2, pctx_, cc_,
                     U, Wc, W_comb_att, U_att, c_tt, Ux, Wcx, U_nl, Ux_nl, b_nl, bx_nl):
 
@@ -308,7 +307,7 @@ def gru_cond_layer(tparams, state_below, options, prefix='gru', mask=None, conte
                    tparams[prefix_append(prefix, 'bx_nl')]]
 
     if one_step:
-        [h2, ctx_, alphaT, preactx2] = _step( * (seqs + [init_state, None, None, pctx_, context] + shared_vars))
+        [h2, ctx_, alphaT, preactx2] = _step( * (seqs + [init_state, None, None, None, pctx_, context] + shared_vars))
     else:
         [h2, ctx_, alphaT, preactx2], updates = theano.scan(_step,
                                                              sequences=seqs,
