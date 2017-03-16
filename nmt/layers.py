@@ -323,7 +323,6 @@ def gru_cond_layer(tparams, state_below, options, prefix='gru', mask=None, conte
                                     #TODO: CHECK THE DIMENSION OF THE INITIAL STATE
                                     # FOR PREACTX2 (LAST RETURNED VALUE OF SCAN)
     # output info: initial state for the scan function
-    # 
     return [h2, ctx_, alpha.T, preactx2]
 
 
