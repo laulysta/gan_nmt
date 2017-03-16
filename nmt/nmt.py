@@ -860,6 +860,6 @@ if __name__ == '__main__':
           dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
           dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
           use_dropout=False,
-          reload_='saved_models/epoch1_nbUpd62000_model',
+          reload_=False,
           correlation_coeff=0.1,
           clip_c=1.)
