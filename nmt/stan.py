@@ -70,8 +70,8 @@ def load_data(batch_size=128):
     Loads the dataset
     '''
 
-    path_src = '../data/vocab_and_data_small_europarl_v7_enfr/bin_train.en.h5'
-    path_trg = '../data/vocab_and_data_small_europarl_v7_enfr/bin_train.fr.h5'
+    path_src = '../data/vocab_and_data_small_europarl_v7_enfr/bin_train.fr.h5'
+    path_trg = '../data/vocab_and_data_small_europarl_v7_enfr/bin_train.en.h5'
 
     #############
     # LOAD DATA #

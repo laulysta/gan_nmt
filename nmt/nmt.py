@@ -753,7 +753,6 @@ def train(dim_word=100,  # word vector dimensionality
 
 
 if __name__ == '__main__':
-    
     start_time = time.time()
     train(dim_word=100,
           dim=1000,
@@ -773,17 +772,19 @@ if __name__ == '__main__':
           optimizer='adadelta',
           batch_size=16,
           valid_batch_size=16,
-          saveto='saved_models/model.npz',
+          saveto='saved_models/fr-en/model.npz',
           validFreq=1000,
-          saveFreq=1000,
+          saveFreq=10000,
           sampleFreq=100,
           dataset='stan',
-          dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
-          dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
+          dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
+          dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
           use_dropout=False,
-          reload_=False,
+          reload_='./saved_models/fr-en/epoch0_nbUpd31250_model',
           correlation_coeff=0.1,
           clip_c=1.)
 
     end_time = time.time()
     print'{} epochs in {} seconds'.format(max_epochs, end_time - start_time)
+
+
