@@ -264,7 +264,7 @@ def build_model(tparams, options):
 
     # Decoder in Free Running mode
     decoder_FR = get_layer(options['decoder_FR'])[1]
-    proj = decoder_FR(tparams, emb, options, prefix='decoder_FR', mask=y_mask,
+    proj = decoder_FR(tparams, emb, options, prefix='decoder', mask=y_mask,
                       context=ctx, context_mask=x_mask, one_step=False,
                       init_state=init_state, init_memory=init_memory)
     proj_h = proj[0]

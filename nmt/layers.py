@@ -1,5 +1,6 @@
 import theano
 import theano.tensor as tensor
+from theano.gradient import disconnected_grad
 import numpy
 from utils import *
 
@@ -362,8 +363,8 @@ def gru_cond_layer_FR(tparams, state_below, options, prefix='gru', mask=None, co
     # projected x
     state_belowx = tensor.dot(state_below, tparams[prefix_append(prefix, 'Wx')]) + tparams[prefix_append(prefix, 'bx')]
     state_below_ = tensor.dot(state_below, tparams[prefix_append(prefix, 'W')]) + tparams[prefix_append(prefix, 'b')]
-    #state_belowc = tensor.dot(state_below, tparams[prefix_append(prefix, 'Wi_att')])
-    #import ipdb; ipdb.set_trace()
+    # state_belowc = tensor.dot(state_below, tparams[prefix_append(prefix, 'Wi_att')])
+    # import ipdb; ipdb.set_trace()
 
     def _step_slice(m_, x_, xx_, h_, ctx_, alpha_, preactx2, pctx_, cc_,
                     U, Wc, W_comb_att, U_att, c_tt, Ux, Wcx, U_nl, Ux_nl, b_nl, bx_nl):
@@ -414,6 +415,15 @@ def gru_cond_layer_FR(tparams, state_below, options, prefix='gru', mask=None, co
         h2 = u2 * h1 + (1. - u2) * h2
         h2 = m_[:, None] * h2 + (1. - m_)[:, None] * h1
 
+        # compute word logits
+        logit_lstm = disconnected_grad(get_layer('ff')[1](tparams, h2, options, prefix='ff_logit_lstm', activ='linear'))
+        logit_prev = disconnected_grad(get_layer('ff_nb')[1](tparams, emb, options, prefix='ff_nb_logit_prev', activ='linear'))
+        logit_ctx = disconnected_grad(get_layer('ff_nb')[1](tparams, ctxs, options, prefix='ff_nb_logit_ctx', activ='linear'))
+
+        logit = disconnected_grad(tensor.tanh(logit_lstm + logit_prev + logit_ctx))
+        logit = disconnected_grad(get_layer('ff')[1](tparams, logit, options, prefix='ff_logit', activ='linear'))
+        nw = disconnected_grad(logit.argmax())
+        
         return h2, ctx_, alpha.T, preactx2
 
 
