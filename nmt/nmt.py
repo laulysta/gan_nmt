@@ -47,7 +47,7 @@ def get_dataset(name):
 def init_tparams(params):
     tparams = OrderedDict()
     for kk, pp in params.iteritems():
-        if not 'adversarial' in kk:
+        if not 'adversarial' in kk and not 'FR' in kk:
             tparams[kk] = theano.shared(params[kk], name=kk)
     return tparams
 
@@ -89,7 +89,7 @@ def init_params(options):
     params = get_layer('ff')[0](options, params, prefix='ff_state', nin=ctxdim, nout=options['dim'])
     if options['encoder'] == 'lstm':
         params = get_layer('ff')[0](options, params, prefix='ff_memory', nin=ctxdim, nout=options['dim'])
-    # decoder: LSTM
+    # decoder: Teacher Forcing Mode
     params = get_layer(options['decoder'])[0](options, params, prefix='decoder',
                                               nin=options['dim_word'], dim=options['dim'],
                                               dimctx=ctxdim)
@@ -99,6 +99,11 @@ def init_params(options):
     params = get_layer('ff_nb')[0](options, params, prefix='ff_nb_logit_prev', nin=options['dim_word'], nout=options['dim_word'], ortho=False)
     params = get_layer('ff_nb')[0](options, params, prefix='ff_nb_logit_ctx', nin=ctxdim, nout=options['dim_word'], ortho=False)
     params = get_layer('ff')[0](options, params, prefix='ff_logit', nin=options['dim_word'], nout=options['n_words'])
+
+    # decoder: Free Running Mode
+    params = get_layer(options['gru_cond_FR'])[0](options, params, prefix='decoder_FR',
+                                                  nin=options['dim_word'], dim=options['dim'],
+                                                  dimctx=ctxdim)
 
     #Adversarial network
     params = get_layer(options['encoder'])[0](options, params, prefix='encoder_adversarial',
@@ -239,7 +244,7 @@ def build_model(tparams, options):
     emb_shifted = tensor.set_subtensor(emb_shifted[1:], emb[:-1])
     emb = emb_shifted
 
-    # decoder
+    # Decoder in Teacher Forcing mode
     decoder = get_layer(options['decoder'])[1]
     proj = decoder(tparams, emb, options, prefix='decoder', mask=y_mask,
                    context=ctx, context_mask=x_mask, one_step=False,
@@ -256,6 +261,25 @@ def build_model(tparams, options):
         opt_ret['dec_alphas'] = proj[2]
 
     B_teacher_forcing = proj[3]
+
+    # Decoder in Free Running mode
+    decoder_FR = get_layer(options['gru_cond_FR'])[1]
+    proj = decoder_FR(tparams, emb, options, prefix='decoder_FR', mask=y_mask,
+                      context=ctx, context_mask=x_mask, one_step=False,
+                      init_state=init_state, init_memory=init_memory)
+    proj_h = proj[0]
+
+    if options['decoder'].endswith('simple'):
+        ctxs = ctx[None, :, :]
+    elif options['decoder'].startswith('lstm'):
+        ctxs = proj[2]
+        opt_ret['dec_alphas'] = proj[3]
+    else:
+        ctxs = proj[1]
+        opt_ret['dec_alphas'] = proj[2]
+
+    B_free_running = proj[3]    
+
 
     # compute word probabilities
     logit_lstm = get_layer('ff')[1](tparams, proj_h, options, prefix='ff_logit_lstm', activ='linear')
@@ -278,7 +302,7 @@ def build_model(tparams, options):
     cost = (cost * y_mask).sum(0)
 
 
-    return trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost
+    return trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost, B_teacher_forcing, B_free_running
 
 
 # build a sampler
@@ -555,7 +579,6 @@ def train(dim_word=100,  # word vector dimensionality
     model_options = copy.copy(inspect.currentframe().f_locals)
 
     # model_options = locals().copy()
-    print model_options
     if dictionary:
         word_dict, word_idict = load_dictionary(dictionary)
 
@@ -579,8 +602,8 @@ def train(dim_word=100,  # word vector dimensionality
 
     tparams = init_tparams(params)
 
-    trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost = build_model(tparams,
-                                                                       model_options)
+    trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost, B_teacher_forcing, B_free_running = build_model(tparams,
+                                                                                                          model_options)
     inps = [x, x_mask, y, y_mask]
 
     # theano.printing.debugprint(cost.mean(), file=open('cost.txt', 'w'))
