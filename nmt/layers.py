@@ -10,6 +10,7 @@ layers = {'ff': ('param_init_fflayer', 'fflayer'),
           'lstm_cond': ('param_init_lstm_cond', 'lstm_cond_layer'),
           'gru': ('param_init_gru', 'gru_layer'),
           'gru_cond': ('param_init_gru_cond', 'gru_cond_layer'),
+          'gru_cond': ('param_init_gru_cond', 'gru_cond_layer'),
           'gru_cond_simple': ('param_init_gru_cond_simple', 'gru_cond_simple_layer'),
           'gru_hiero': ('param_init_gru_hiero', 'gru_hiero_layer'),
           'rnn': ('param_init_rnn', 'rnn_layer'),
@@ -238,7 +239,7 @@ def gru_cond_layer(tparams, state_below, options, prefix='gru', mask=None, conte
     #import ipdb; ipdb.set_trace()
 
     # preactx2_m1 should be the value of preactx2 at time t minus 1
-    def _step_slice(m_, x_, xx_, h_, ctx_, alpha_, preactx2, preactx2_m1, pctx_, cc_,
+    def _step_slice(m_, x_, xx_, h_, ctx_, alpha_, preactx2, pctx_, cc_,
                     U, Wc, W_comb_att, U_att, c_tt, Ux, Wcx, U_nl, Ux_nl, b_nl, bx_nl):
 
         preact1 = tensor.dot(h_, U)
@@ -327,8 +328,10 @@ def gru_cond_layer(tparams, state_below, options, prefix='gru', mask=None, conte
 
 
 
-def gru_cond_layer_OLD(tparams, state_below, options, prefix='gru', mask=None, context=None, one_step=False, init_memory=None, init_state=None, context_mask=None, **kwargs):
-
+def gru_cond_layer_FR(tparams, state_below, options, prefix='gru', mask=None, context=None, one_step=False, init_memory=None, init_state=None, context_mask=None, **kwargs):
+    '''
+    GRU decoder layer in [F]ree [R]unning mode
+    '''
     assert context, 'Context must be provided'
 
     if one_step:
@@ -364,6 +367,18 @@ def gru_cond_layer_OLD(tparams, state_below, options, prefix='gru', mask=None, c
     state_below_ = tensor.dot(state_below, tparams[prefix_append(prefix, 'W')]) + tparams[prefix_append(prefix, 'b')]
     #state_belowc = tensor.dot(state_below, tparams[prefix_append(prefix, 'Wi_att')])
     #import ipdb; ipdb.set_trace()
+
+    # Pick the highest probability output as true output for 
+    # the next round
+    # compute word probabilities
+    logit_lstm = get_layer('ff')[1](tparams, proj_h, options, prefix='ff_logit_lstm', activ='linear')
+    logit_prev = get_layer('ff_nb')[1](tparams, emb, options, prefix='ff_nb_logit_prev', activ='linear')
+    logit_ctx = get_layer('ff_nb')[1](tparams, ctxs, options, prefix='ff_nb_logit_ctx', activ='linear')
+
+    logit = tensor.tanh(logit_lstm + logit_prev + logit_ctx)
+    logit = get_layer('ff')[1](tparams, logit, options, prefix='ff_logit', activ='linear')
+
+    logit_shp = logit.shape
 
     def _step_slice(m_, x_, xx_, h_, ctx_, alpha_, pctx_, cc_,
                     U, Wc, W_comb_att, U_att, c_tt, Ux, Wcx, U_nl, Ux_nl, b_nl, bx_nl):
@@ -412,6 +427,7 @@ def gru_cond_layer_OLD(tparams, state_below, options, prefix='gru', mask=None, c
 
         h2 = u2 * h1 + (1. - u2) * h2
         h2 = m_[:, None] * h2 + (1. - m_)[:, None] * h1
+
 
         return h2, ctx_, alpha.T #, pstate_, preact, preactx, r, u
 
