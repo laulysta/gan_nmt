@@ -47,7 +47,7 @@ def get_dataset(name):
 def init_tparams(params):
     tparams = OrderedDict()
     for kk, pp in params.iteritems():
-        if not 'adversarial' in kk:
+        if not 'adversarial' in kk and not 'FR' in kk:
             tparams[kk] = theano.shared(params[kk], name=kk)
     return tparams
 
@@ -89,7 +89,7 @@ def init_params(options):
     params = get_layer('ff')[0](options, params, prefix='ff_state', nin=ctxdim, nout=options['dim'])
     if options['encoder'] == 'lstm':
         params = get_layer('ff')[0](options, params, prefix='ff_memory', nin=ctxdim, nout=options['dim'])
-    # decoder: LSTM
+    # decoder: Teacher Forcing Mode
     params = get_layer(options['decoder'])[0](options, params, prefix='decoder',
                                               nin=options['dim_word'], dim=options['dim'],
                                               dimctx=ctxdim)
@@ -99,6 +99,11 @@ def init_params(options):
     params = get_layer('ff_nb')[0](options, params, prefix='ff_nb_logit_prev', nin=options['dim_word'], nout=options['dim_word'], ortho=False)
     params = get_layer('ff_nb')[0](options, params, prefix='ff_nb_logit_ctx', nin=ctxdim, nout=options['dim_word'], ortho=False)
     params = get_layer('ff')[0](options, params, prefix='ff_logit', nin=options['dim_word'], nout=options['n_words'])
+
+    # decoder: Free Running Mode
+    params = get_layer(options['decoder_FR'])[0](options, params, prefix='decoder_FR',
+                                                  nin=options['dim_word'], dim=options['dim'],
+                                                  dimctx=ctxdim)
 
     #Adversarial network
     params = get_layer(options['encoder'])[0](options, params, prefix='encoder_adversarial',
@@ -126,6 +131,7 @@ def build_encoder_adversarial(tparams, options):
     n_timesteps_orig = h_orig.shape[0]
     n_timesteps_fake = h_fake.shape[0]
 
+    # RNN for adversarial network
     encoder = get_layer(options['encoder_adversarial'])[1]
     proj_orig = encoder(tparams, h_orig, options, prefix='encoder_adersarial', mask=x_mask_orig)
     proj_fake = encoder(tparams, h_fake, options, prefix='encoder_adersarial', mask=x_mask_fake)
@@ -133,32 +139,23 @@ def build_encoder_adversarial(tparams, options):
     proj_orig_r = encoder(tparams, h_orig_r, options, prefix='encoder_adersarial_r', mask=x_mask_orig_r)
     proj_fake_r = encoder(tparams, h_fake_r, options, prefix='encoder_adersarial_r', mask=x_mask_fake_r)
 
-    B_orig = concatenate([proj_orig[0][-1], proj_orig_r[0][-1]], axis=proj_orig[0].ndim - 1)
-    B_fake = concatenate([proj_fake[0][-1], proj_fake_r[0][-1]], axis=proj_fake[0].ndim - 1)
+    intermediate_orig = concatenate([proj_orig[0][-1], proj_orig_r[0][-1]], axis=proj_orig[0].ndim - 1)
+    intermediate_fake = concatenate([proj_fake[0][-1], proj_fake_r[0][-1]], axis=proj_fake[0].ndim - 1)
 
-    inps = [h_orig, h_fake, h_orig_mask, h_fake_mask]
-    outs = [B_orig, B_fake]
-
-    encoder_adversarial = theano.function(inps, outs, name='encoder_adversarial', profile=profile)
-    return encoder_adversarial
-
-def build_discriminator_adversarial(tparams, options):
-    B_orig = tensor.matrix('B_orig', dtype='float32')
-    B_fake = tensor.matrix('B_fake', dtype='float32')
-
+    # MLP for adversarial network
     ff1 = get_layer(options['ff1_adversarial'])[1]
     ff2 = get_layer(options['ff2_adversarial'])[1]
     ff_out = get_layer(options['ff_out_adversarial'])[1]
 
-    D_orig = ff1(tparams, B_orig, options, prefix='ff_state', activ='relu')
+    D_orig = ff1(tparams, intermediate_orig, options, prefix='ff_state', activ='relu')
     D_orig = ff2(tparams, D_orig, options, prefix='ff_state', activ='relu')
     D_orig = ff_out(tparams, D_orig, options, prefix='ff_state', activ='sigmoid')
 
-    D_fake = ff1(tparams, B_orig, options, prefix='ff_state', activ='relu')
+    D_fake = ff1(tparams, intermediate_fake, options, prefix='ff_state', activ='relu')
     D_fake = ff2(tparams, D_fake, options, prefix='ff_state', activ='relu')
     D_fake = ff_out(tparams, D_fake, options, prefix='ff_state', activ='sigmoid')
 
-    inps = [B_orig, B_fake]
+    inps = [h_orig, h_fake]
     outs = [D_orig, D_fake]
 
     discriminator_adversarial = theano.function(inps, outs, name='discriminator_adversarial', profile=profile)
@@ -179,7 +176,7 @@ def build_adversarial_discriminator_cost(tparams, options):
     return discriminator_adversarial_cost
 
 
-def build_adversarial_generator_cost(encoder_adversarial, tparams, options):
+def build_adversarial_generator_cost(tparams, options):
     D_fake = tensor.matrix('D_fake', dtype='float32')
     cost = -tensor.mean(tensor.log(D_fake))
 
@@ -247,7 +244,7 @@ def build_model(tparams, options):
     emb_shifted = tensor.set_subtensor(emb_shifted[1:], emb[:-1])
     emb = emb_shifted
 
-    # decoder
+    # Decoder in Teacher Forcing mode
     decoder = get_layer(options['decoder'])[1]
     proj = decoder(tparams, emb, options, prefix='decoder', mask=y_mask,
                    context=ctx, context_mask=x_mask, one_step=False,
@@ -262,6 +259,27 @@ def build_model(tparams, options):
     else:
         ctxs = proj[1]
         opt_ret['dec_alphas'] = proj[2]
+
+    B_teacher_forcing = proj[3]
+
+    # Decoder in Free Running mode
+    decoder_FR = get_layer(options['decoder_FR'])[1]
+    proj = decoder_FR(tparams, emb, options, prefix='decoder', mask=y_mask,
+                      context=ctx, context_mask=x_mask, one_step=False,
+                      init_state=init_state, init_memory=init_memory)
+    proj_h = proj[0]
+
+    if options['decoder'].endswith('simple'):
+        ctxs = ctx[None, :, :]
+    elif options['decoder'].startswith('lstm'):
+        ctxs = proj[2]
+        opt_ret['dec_alphas'] = proj[3]
+    else:
+        ctxs = proj[1]
+        opt_ret['dec_alphas'] = proj[2]
+
+    B_free_running = proj[3]    
+
 
     # compute word probabilities
     logit_lstm = get_layer('ff')[1](tparams, proj_h, options, prefix='ff_logit_lstm', activ='linear')
@@ -284,7 +302,7 @@ def build_model(tparams, options):
     cost = (cost * y_mask).sum(0)
 
 
-    return trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost
+    return trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost, B_teacher_forcing, B_free_running
 
 
 # build a sampler
@@ -559,9 +577,8 @@ def train(dim_word=100,  # word vector dimensionality
           clip_c=0.):
 
     model_options = copy.copy(inspect.currentframe().f_locals)
-
+    model_options['decoder_FR'] = 'gru_cond_FR'
     # model_options = locals().copy()
-    print model_options
     if dictionary:
         word_dict, word_idict = load_dictionary(dictionary)
 
@@ -585,8 +602,8 @@ def train(dim_word=100,  # word vector dimensionality
 
     tparams = init_tparams(params)
 
-    trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost = build_model(tparams,
-                                                                       model_options)
+    trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost, B_teacher_forcing, B_free_running = build_model(tparams,
+                                                                                                          model_options)
     inps = [x, x_mask, y, y_mask]
 
     # theano.printing.debugprint(cost.mean(), file=open('cost.txt', 'w'))
@@ -867,5 +884,6 @@ if __name__ == '__main__':
           dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
           use_dropout=False,
           reload_='saved_models/epoch4_nbUpd156000_model',
+          reload_=False,
           correlation_coeff=0.1,
           clip_c=1.)

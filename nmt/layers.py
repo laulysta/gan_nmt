@@ -1,5 +1,6 @@
 import theano
 import theano.tensor as tensor
+from theano.gradient import disconnected_grad
 import numpy
 from utils import *
 
@@ -10,6 +11,7 @@ layers = {'ff': ('param_init_fflayer', 'fflayer'),
           'lstm_cond': ('param_init_lstm_cond', 'lstm_cond_layer'),
           'gru': ('param_init_gru', 'gru_layer'),
           'gru_cond': ('param_init_gru_cond', 'gru_cond_layer'),
+          'gru_cond_FR': ('param_init_gru_cond', 'gru_cond_layer_FR'), # VERIFY that param_init_gru_cond can be reused
           'gru_cond_simple': ('param_init_gru_cond_simple', 'gru_cond_simple_layer'),
           'gru_hiero': ('param_init_gru_hiero', 'gru_hiero_layer'),
           'rnn': ('param_init_rnn', 'rnn_layer'),
@@ -237,8 +239,7 @@ def gru_cond_layer(tparams, state_below, options, prefix='gru', mask=None, conte
     #state_belowc = tensor.dot(state_below, tparams[prefix_append(prefix, 'Wi_att')])
     #import ipdb; ipdb.set_trace()
 
-    # preactx2_m1 should be the value of preactx2 at time t minus 1
-    def _step_slice(m_, x_, xx_, h_, ctx_, alpha_, preactx2, preactx2_m1, pctx_, cc_,
+    def _step_slice(m_, x_, xx_, h_, ctx_, alpha_, preactx2, pctx_, cc_,
                     U, Wc, W_comb_att, U_att, c_tt, Ux, Wcx, U_nl, Ux_nl, b_nl, bx_nl):
 
         preact1 = tensor.dot(h_, U)
@@ -307,14 +308,14 @@ def gru_cond_layer(tparams, state_below, options, prefix='gru', mask=None, conte
                    tparams[prefix_append(prefix, 'bx_nl')]]
 
     if one_step:
-        [h2, ctx_, alpha.T, preactx2] = _step( * (seqs + [init_state, None, None, pctx_, context] + shared_vars))
+        [h2, ctx_, alphaT, preactx2] = _step( * (seqs + [init_state, None, None, None, pctx_, context] + shared_vars))
     else:
-        [h2, ctx_, alpha.T, preactx2], updates = theano.scan(_step,
+        [h2, ctx_, alphaT, preactx2], updates = theano.scan(_step,
                                                              sequences=seqs,
                                                              outputs_info=[init_state,
                                                                            tensor.alloc(0., n_samples, context.shape[2]),
                                                                            tensor.alloc(0., n_samples, context.shape[0]),
-                                                                           dict(initial=tensor.alloc(0., n_samples, init_state.shape[1]), taps=[-1])],
+                                                                           dict(initial=tensor.alloc(0., n_samples, init_state.shape[1]), taps=None)],
                                                              non_sequences=[pctx_, context] + shared_vars,
                                                              name=prefix_append(prefix, '_layers'),
                                                              n_steps=nsteps,
@@ -323,12 +324,11 @@ def gru_cond_layer(tparams, state_below, options, prefix='gru', mask=None, conte
                                     #TODO: CHECK THE DIMENSION OF THE INITIAL STATE
                                     # FOR PREACTX2 (LAST RETURNED VALUE OF SCAN)
     # output info: initial state for the scan function
-    # 
-    return [h2, ctx_, alpha.T, preactx2]
+    return [h2, ctx_, alphaT, preactx2]
 
 
 
-def gru_cond_layer_OLD(tparams, state_below, options, prefix='gru', mask=None, context=None, one_step=False, init_memory=None, init_state=None, context_mask=None, **kwargs):
+def gru_cond_layer_FR(tparams, state_below, options, prefix='gru', mask=None, context=None, one_step=False, init_memory=None, init_state=None, context_mask=None, **kwargs):
 
     assert context, 'Context must be provided'
 
@@ -363,10 +363,10 @@ def gru_cond_layer_OLD(tparams, state_below, options, prefix='gru', mask=None, c
     # projected x
     state_belowx = tensor.dot(state_below, tparams[prefix_append(prefix, 'Wx')]) + tparams[prefix_append(prefix, 'bx')]
     state_below_ = tensor.dot(state_below, tparams[prefix_append(prefix, 'W')]) + tparams[prefix_append(prefix, 'b')]
-    #state_belowc = tensor.dot(state_below, tparams[prefix_append(prefix, 'Wi_att')])
-    #import ipdb; ipdb.set_trace()
+    # state_belowc = tensor.dot(state_below, tparams[prefix_append(prefix, 'Wi_att')])
+    # import ipdb; ipdb.set_trace()
 
-    def _step_slice(m_, x_, xx_, h_, ctx_, alpha_, pctx_, cc_,
+    def _step_slice(m_, x_, xx_, h_, ctx_, alpha_, preactx2, pctx_, cc_,
                     U, Wc, W_comb_att, U_att, c_tt, Ux, Wcx, U_nl, Ux_nl, b_nl, bx_nl):
 
         preact1 = tensor.dot(h_, U)
@@ -408,13 +408,23 @@ def gru_cond_layer_OLD(tparams, state_below, options, prefix='gru', mask=None, c
         preactx2 = tensor.dot(h1, Ux_nl) + bx_nl
         preactx2 *= r2
         preactx2 += tensor.dot(ctx_, Wcx)
+        # preactx2 is the new candidate pre-tanh
 
         h2 = tensor.tanh(preactx2)
 
         h2 = u2 * h1 + (1. - u2) * h2
         h2 = m_[:, None] * h2 + (1. - m_)[:, None] * h1
 
-        return h2, ctx_, alpha.T #, pstate_, preact, preactx, r, u
+        # compute word logits
+        logit_lstm = disconnected_grad(get_layer('ff')[1](tparams, h2, options, prefix='ff_logit_lstm', activ='linear'))
+        logit_prev = disconnected_grad(get_layer('ff_nb')[1](tparams, x_, options, prefix='ff_nb_logit_prev', activ='linear'))
+        logit_ctx = disconnected_grad(get_layer('ff_nb')[1](tparams, ctx_, options, prefix='ff_nb_logit_ctx', activ='linear'))
+
+        logit = disconnected_grad(tensor.tanh(logit_lstm + logit_prev + logit_ctx))
+        logit = disconnected_grad(get_layer('ff')[1](tparams, logit, options, prefix='ff_logit', activ='linear'))
+        nw = disconnected_grad(logit.argmax())
+
+        return h2, ctx_, alpha.T, preactx2
 
 
     seqs = [mask, state_below_, state_belowx]
@@ -434,21 +444,23 @@ def gru_cond_layer_OLD(tparams, state_below, options, prefix='gru', mask=None, c
                    tparams[prefix_append(prefix, 'bx_nl')]]
 
     if one_step:
-        rval = _step( * (seqs + [init_state, None, None, pctx_, context] + shared_vars))
+        [h2, ctx_, alphaT, preactx2] = _step( * (seqs + [init_state, None, None, None, pctx_, context] + shared_vars))
     else:
-        rval, updates = theano.scan(_step,
-                                    sequences=seqs,
-                                    outputs_info=[init_state,
-                                                  tensor.alloc(0., n_samples, context.shape[2]),
-                                                  tensor.alloc(0., n_samples, context.shape[0])],
-                                    non_sequences=[pctx_, context] + shared_vars,
-                                    name=prefix_append(prefix, '_layers'),
-                                    n_steps=nsteps,
-                                    profile=profile,
-                                    strict=True)
+        [h2, ctx_, alphaT, preactx2], updates = theano.scan(_step,
+                                                             sequences=seqs,
+                                                             outputs_info=[init_state,
+                                                                           tensor.alloc(0., n_samples, context.shape[2]),
+                                                                           tensor.alloc(0., n_samples, context.shape[0]),
+                                                                           dict(initial=tensor.alloc(0., n_samples, init_state.shape[1]), taps=None)],
+                                                             non_sequences=[pctx_, context] + shared_vars,
+                                                             name=prefix_append(prefix, '_layers'),
+                                                             n_steps=nsteps,
+                                                             profile=profile,
+                                                             strict=True)
+                                    #TODO: CHECK THE DIMENSION OF THE INITIAL STATE
+                                    # FOR PREACTX2 (LAST RETURNED VALUE OF SCAN)
     # output info: initial state for the scan function
-    # 
-    return rval
+    return [h2, ctx_, alphaT, preactx2]
 
 
 def param_init_gru_nonlin(options, params, prefix='gru', nin=None, dim=None, hiero=False):
