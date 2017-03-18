@@ -200,6 +200,37 @@ def param_init_gru_cond(options, params, prefix='gru_cond', nin=None, dim=None, 
 
     return params
 
+def param_init_gru_nonlin(options, params, prefix='gru', nin=None, dim=None, hiero=False):
+    if nin is None:
+        nin = options['dim_proj']
+    if dim is None:
+        dim = options['dim_proj']
+    if not hiero:
+        W = numpy.concatenate([norm_weight(nin,dim),
+                               norm_weight(nin,dim)], axis=1)
+        params[prefix_append(prefix,'W')] = W
+        params[prefix_append(prefix,'b')] = numpy.zeros((2 * dim,)).astype('float32')
+    U = numpy.concatenate([ortho_weight(dim),
+                           ortho_weight(dim)], axis=1)
+    params[prefix_append(prefix,'U')] = U
+
+    Wx = norm_weight(nin, dim)
+    params[prefix_append(prefix,'Wx')] = Wx
+    Ux = ortho_weight(dim)
+    params[prefix_append(prefix,'Ux')] = Ux
+    params[prefix_append(prefix,'bx')] = numpy.zeros((dim,)).astype('float32')
+
+    
+    U_nl = numpy.concatenate([ortho_weight(dim),
+                              ortho_weight(dim)], axis=1)
+    params[prefix_append(prefix,'U_nl')] = U_nl
+    params[prefix_append(prefix,'b_nl')] = numpy.zeros((2 * dim,)).astype('float32')
+
+    Ux_nl = ortho_weight(dim)
+    params[prefix_append(prefix,'Ux_nl')] = Ux_nl
+    params[prefix_append(prefix,'bx_nl')] = numpy.zeros((dim,)).astype('float32')
+    
+    return params
 
 def gru_cond_layer(tparams, state_below, options, prefix='gru', mask=None, context=None, one_step=False, init_memory=None, init_state=None, context_mask=None, **kwargs):
 
@@ -365,22 +396,26 @@ def gru_cond_layer_FR(tparams, state_below, options, prefix='gru', mask=None, co
     state_below_ = tensor.dot(state_below, tparams[prefix_append(prefix, 'W')]) + tparams[prefix_append(prefix, 'b')]
     # state_belowc = tensor.dot(state_below, tparams[prefix_append(prefix, 'Wi_att')])
     # import ipdb; ipdb.set_trace()
+    n_timesteps_trg = 1
 
-    def _step_slice(m_, x_, xx_, h_, ctx_, alpha_, preactx2, pctx_, cc_,
+    def _step_slice(nw, h_, ctx_, alpha_, preactx2, pctx_, cc_,
                     U, Wc, W_comb_att, U_att, c_tt, Ux, Wcx, U_nl, Ux_nl, b_nl, bx_nl):
+
+        state_below = tparams['Wemb_dec'][x].reshape([n_timesteps_trg, n_samples, options['dim_word']])
+
+        x_ = tensor.dot(state_below, tparams[prefix_append(prefix, 'W')]) + tparams[prefix_append(prefix, 'b')]
+        xx_ = tensor.dot(state_below, tparams[prefix_append(prefix, 'Wx')]) + tparams[prefix_append(prefix, 'bx')]
+
 
         preact1 = tensor.dot(h_, U)
         preact1 += x_
         preact1 = tensor.nnet.sigmoid(preact1)
 
-        r1 = _slice(preact1, 0, dim)   # (4)
-        u1 = _slice(preact1, 1, dim)   # (5)
+        r1 = _slice(preact1, 0, dim)   # (4) reset gate
+        u1 = _slice(preact1, 1, dim)   # (5) update gate
 
-        preactx1 = tensor.dot(h_, Ux)
-        preactx1 *= r1
-        preactx1 += xx_
-
-        h1 = tensor.tanh(preactx1)  # (3)
+        preactx1 = tensor.dot(h_, Ux) * r1 + xx_
+        h1 = tensor.tanh(preactx1)  # (3) new candidate memory state
 
         h1 = u1 * h_ + (1. - u1) * h1
         h1 = m_[:, None] * h1 + (1. - m_)[:, None] * h_     # (2)
@@ -424,11 +459,10 @@ def gru_cond_layer_FR(tparams, state_below, options, prefix='gru', mask=None, co
         logit = disconnected_grad(get_layer('ff')[1](tparams, logit, options, prefix='ff_logit', activ='linear'))
         nw = disconnected_grad(logit.argmax())
 
-        return h2, ctx_, alpha.T, preactx2
+        return nw, h2, ctx_, alpha.T, preactx2
 
 
-    seqs = [mask, state_below_, state_belowx]
-    #seqs = [mask, state_below_, state_belowx, state_belowc]
+    # seqs = [mask, state_below_, state_belowx]
     _step = _step_slice
 
     shared_vars = [tparams[prefix_append(prefix, 'U')],
@@ -444,11 +478,10 @@ def gru_cond_layer_FR(tparams, state_below, options, prefix='gru', mask=None, co
                    tparams[prefix_append(prefix, 'bx_nl')]]
 
     if one_step:
-        [h2, ctx_, alphaT, preactx2] = _step( * (seqs + [init_state, None, None, None, pctx_, context] + shared_vars))
+        [nw, h2, ctx_, alphaT, preactx2] = _step( * (seqs + [init_state, None, None, None, pctx_, context] + shared_vars))
     else:
-        [h2, ctx_, alphaT, preactx2], updates = theano.scan(_step,
-                                                             sequences=seqs,
-                                                             outputs_info=[init_state,
+        [nw, h2, ctx_, alphaT, preactx2], updates = theano.scan(_step,
+                                                             outputs_info=[0, init_state,
                                                                            tensor.alloc(0., n_samples, context.shape[2]),
                                                                            tensor.alloc(0., n_samples, context.shape[0]),
                                                                            dict(initial=tensor.alloc(0., n_samples, init_state.shape[1]), taps=None)],
@@ -461,39 +494,6 @@ def gru_cond_layer_FR(tparams, state_below, options, prefix='gru', mask=None, co
                                     # FOR PREACTX2 (LAST RETURNED VALUE OF SCAN)
     # output info: initial state for the scan function
     return [h2, ctx_, alphaT, preactx2]
-
-
-def param_init_gru_nonlin(options, params, prefix='gru', nin=None, dim=None, hiero=False):
-    if nin is None:
-        nin = options['dim_proj']
-    if dim is None:
-        dim = options['dim_proj']
-    if not hiero:
-        W = numpy.concatenate([norm_weight(nin,dim),
-                               norm_weight(nin,dim)], axis=1)
-        params[prefix_append(prefix,'W')] = W
-        params[prefix_append(prefix,'b')] = numpy.zeros((2 * dim,)).astype('float32')
-    U = numpy.concatenate([ortho_weight(dim),
-                           ortho_weight(dim)], axis=1)
-    params[prefix_append(prefix,'U')] = U
-
-    Wx = norm_weight(nin, dim)
-    params[prefix_append(prefix,'Wx')] = Wx
-    Ux = ortho_weight(dim)
-    params[prefix_append(prefix,'Ux')] = Ux
-    params[prefix_append(prefix,'bx')] = numpy.zeros((dim,)).astype('float32')
-
-    
-    U_nl = numpy.concatenate([ortho_weight(dim),
-                              ortho_weight(dim)], axis=1)
-    params[prefix_append(prefix,'U_nl')] = U_nl
-    params[prefix_append(prefix,'b_nl')] = numpy.zeros((2 * dim,)).astype('float32')
-
-    Ux_nl = ortho_weight(dim)
-    params[prefix_append(prefix,'Ux_nl')] = Ux_nl
-    params[prefix_append(prefix,'bx_nl')] = numpy.zeros((dim,)).astype('float32')
-    
-    return params
 
 
 # LSTM layer
