@@ -1,6 +1,8 @@
 import theano
 import theano.tensor as tensor
 from theano.gradient import disconnected_grad
+from theano.tensor.nnet import relu
+from theano.tensor.nnet import sigmoid
 import numpy
 from utils import *
 
@@ -106,7 +108,6 @@ def param_init_gru(options, params, prefix='gru', nin=None, dim=None, hiero=Fals
 
     return params
 
-
 def gru_layer(tparams, state_below, options, prefix='gru', mask=None, **kwargs):
     nsteps = state_below.shape[0]
     if state_below.ndim == 3:
@@ -210,7 +211,9 @@ def gru_layer_w_mlp(tparams, state_below, options, prefix='gru', mask=None, **kw
     U = tparams[prefix_append(prefix, 'U')]
     Ux = tparams[prefix_append(prefix, 'Ux')]
 
-    def _step_slice(m_, x_, xx_, h_, U, Ux):
+    def _step_slice(m_, x_, xx_, h_, U, Ux, 
+                    Wff1, bff1, Wff2, bff2, 
+                    Wffout, bffout):
         preact = tensor.dot(h_, U) + x_
 
         r = tensor.nnet.sigmoid(_slice(preact, 0, dim))
@@ -225,22 +228,34 @@ def gru_layer_w_mlp(tparams, state_below, options, prefix='gru', mask=None, **kw
         h = u * h_ + (1. - u) * h
         h = m_[:, None] * h + (1. - m_)[:, None] * h_
 
-        return h  #, r, u, preact, preactx
+        out = relu(tensor.dot(h, Wff1) + bff1)
+        out = relu(tensor.dot(out, Wff2) + bff2)
+        out = sigmoid(tensor.dot(out, Wff2) + bff2)
+
+        return h, out  #, r, u, preact, preactx
 
     seqs = [mask, state_below_, state_belowx]
+    shared_vars = [tparams[prefix_append(prefix, 'U')],
+                   tparams[prefix_append(prefix, 'Ux')], 
+                   tparams[prefix_append(prefix + '_ff1', 'W')],
+                   tparams[prefix_append(prefix + '_ff1', 'b')],
+                   tparams[prefix_append(prefix + '_ff2', 'W')],
+                   tparams[prefix_append(prefix + '_ff2', 'b')],
+                   tparams[prefix_append(prefix + '_ff_out', 'W')],
+                   tparams[prefix_append(prefix + '_ff_out', 'b')]]
+
     _step = _step_slice
 
-    rval, updates = theano.scan(_step,
+    [h, out], updates = theano.scan(_step,
                                 sequences=seqs,
                                 outputs_info=[tensor.alloc(0., n_samples, dim)],
-                                non_sequences=[tparams[prefix_append(prefix, 'U')],
-                                               tparams[prefix_append(prefix, 'Ux')]],
+                                non_sequences=shared_vars,
                                 name=prefix_append(prefix, '_layers'),
                                 n_steps=nsteps,
                                 profile=profile,
                                 strict=True)
-    rval = [rval]
-    return rval
+
+    return [h, out]
 
 # Conditional GRU layer with Attention
 def param_init_gru_cond(options, params, prefix='gru_cond', nin=None, dim=None, dimctx=None):
