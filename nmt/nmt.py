@@ -49,10 +49,15 @@ def get_dataset(name):
 def init_tparams(params):
     tparams = OrderedDict()
     for kk, pp in params.iteritems():
-        if not 'adversarial' in kk and not 'FR' in kk:
-            tparams[kk] = theano.shared(params[kk], name=kk)
+        tparams[kk] = theano.shared(params[kk], name=kk)
     return tparams
 
+def init_params_nll(tparams):
+    params_nll = OrderedDict()
+    for kk, pp in tparams.iteritems():
+        if not 'adversarial' in kk and not 'FR' in kk:
+            params_nll[kk] = tparams[kk]
+    return params_nll
 
 # load parameters
 def load_params(path, params):
@@ -261,7 +266,9 @@ def build_model(tparams, options):
         opt_ret['dec_alphas'] = proj[2]
 
     B_teacher_forcing = proj[3]
+
     D_real = get_layer('gru_w_mlp')[1](tparams, B_teacher_forcing, options, prefix='encoder_adversarial')
+
 
     # Decoder in Free Running mode
     decoder_FR = get_layer(options['decoder_FR'])[1]
@@ -602,8 +609,7 @@ def train(dim_word=100,  # word vector dimensionality
 
     tparams = init_tparams(params)
 
-    trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost, B_teacher_forcing, B_free_running = build_model(tparams,
-                                                                                                          model_options)
+    trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost, B_teacher_forcing, B_free_running = build_model(tparams, model_options)
     inps = [x, x_mask, y, y_mask]
 
     # theano.printing.debugprint(cost.mean(), file=open('cost.txt', 'w'))
@@ -643,7 +649,8 @@ def train(dim_word=100,  # word vector dimensionality
         print 'Done'
 
     print 'Computing gradient...',
-    grads = tensor.grad(cost, wrt=itemlist(tparams))
+    params_nll = init_params_nll(tparams)
+    grads = tensor.grad(cost, wrt=itemlist(params_nll))
     print 'Done'
     print 'Building f_grad...',
     f_grad = theano.function(inps, grads, profile=profile)

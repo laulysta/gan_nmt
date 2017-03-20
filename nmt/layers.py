@@ -186,7 +186,7 @@ def param_init_gru_w_mlp(options, params, prefix='gru', nin=None, dim=None, hier
 
     params = get_layer('ff')[0](options, params, prefix=prefix + '_ff1', nin=options['dim'] * 2, nout=options['dim'] * 2, ortho=False)
     params = get_layer('ff')[0](options, params, prefix=prefix + '_ff2', nin=options['dim'] * 2, nout=options['dim'] * 2, ortho=False)
-    params = get_layer('ff')[0](options, params, prefix=prefix + 'ff_out', nin=options['dim'] * 2, nout=1, ortho=False)
+    params = get_layer('ff')[0](options, params, prefix=prefix + '_ff_out', nin=options['dim'] * 2, nout=1, ortho=False)
     return params
 
 def gru_layer_w_mlp(tparams, state_below, options, prefix='gru', mask=None, **kwargs):
@@ -211,7 +211,7 @@ def gru_layer_w_mlp(tparams, state_below, options, prefix='gru', mask=None, **kw
     U = tparams[prefix_append(prefix, 'U')]
     Ux = tparams[prefix_append(prefix, 'Ux')]
 
-    def _step_slice(m_, x_, xx_, h_, U, Ux, 
+    def _step_slice(m_, x_, xx_, h_, out_, U, Ux, 
                     Wff1, bff1, Wff2, bff2, 
                     Wffout, bffout):
         preact = tensor.dot(h_, U) + x_
@@ -248,7 +248,8 @@ def gru_layer_w_mlp(tparams, state_below, options, prefix='gru', mask=None, **kw
 
     [h, out], updates = theano.scan(_step,
                                 sequences=seqs,
-                                outputs_info=[tensor.alloc(0., n_samples, dim)],
+                                outputs_info=[tensor.alloc(0., n_samples, dim),
+                                              tensor.alloc(0., n_samples, 1)],
                                 non_sequences=shared_vars,
                                 name=prefix_append(prefix, '_layers'),
                                 n_steps=nsteps,
