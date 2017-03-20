@@ -89,6 +89,7 @@ def init_params(options):
     params = get_layer('ff')[0](options, params, prefix='ff_state', nin=ctxdim, nout=options['dim'])
     if options['encoder'] == 'lstm':
         params = get_layer('ff')[0](options, params, prefix='ff_memory', nin=ctxdim, nout=options['dim'])
+
     # decoder: Teacher Forcing Mode
     params = get_layer(options['decoder'])[0](options, params, prefix='decoder',
                                               nin=options['dim_word'], dim=options['dim'],
@@ -541,7 +542,7 @@ def pred_probs(f_log_probs, prepare_data, options, iterator, verbose=True):
             probs.append(pp)
 
         if verbose:
-            print >>sys.stderr, '%d samples computed'%(n_done)
+            print >> sys.stderr, '%d samples computed'%(n_done)
 
     return numpy.array(probs)
 
