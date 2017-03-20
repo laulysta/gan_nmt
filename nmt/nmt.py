@@ -28,6 +28,8 @@ from utils import *
 from layers import *
 from optimizers import *
 
+from theano.gradient import disconnected_grad
+
 theano.config.floatX = 'float32'
 
 # datasets: 'name', 'load_data: returns iterator', 'prepare_data: some preprocessing'
@@ -101,9 +103,9 @@ def init_params(options):
     params = get_layer('ff')[0](options, params, prefix='ff_logit', nin=options['dim_word'], nout=options['n_words'])
 
     # decoder: Free Running Mode
-    params = get_layer(options['decoder_FR'])[0](options, params, prefix='decoder_FR',
-                                                  nin=options['dim_word'], dim=options['dim'],
-                                                  dimctx=ctxdim)
+    # params = get_layer(options['decoder_FR'])[0](options, params, prefix='decoder_FR',
+    #                                               nin=options['dim_word'], dim=options['dim'],
+    #                                               dimctx=ctxdim)
 
     #Adversarial network
     params = get_layer(options['encoder'])[0](options, params, prefix='encoder_adversarial',
@@ -261,25 +263,23 @@ def build_model(tparams, options):
         opt_ret['dec_alphas'] = proj[2]
 
     B_teacher_forcing = proj[3]
-
     # Decoder in Free Running mode
     decoder_FR = get_layer(options['decoder_FR'])[1]
-    proj = decoder_FR(tparams, emb, options, prefix='decoder', mask=y_mask,
+    proj_FR = decoder_FR(tparams, emb, options, prefix='decoder', mask=y_mask,
                       context=ctx, context_mask=x_mask, one_step=False,
                       init_state=init_state, init_memory=init_memory)
-    proj_h = proj[0]
+    proj_h_FR = proj_FR[0]
 
     if options['decoder'].endswith('simple'):
-        ctxs = ctx[None, :, :]
+        ctxs_FR = ctx[None, :, :]
     elif options['decoder'].startswith('lstm'):
-        ctxs = proj[2]
-        opt_ret['dec_alphas'] = proj[3]
+        ctxs_FR = proj_FR[2]
+        opt_ret['dec_alphas'] = proj_FR[3]
     else:
-        ctxs = proj[1]
-        opt_ret['dec_alphas'] = proj[2]
+        ctxs_FR = proj_FR[1]
+        opt_ret['dec_alphas_FR'] = proj_FR[2]
 
-    B_free_running = proj[3]    
-
+    B_free_running = proj_FR[3]
 
     # compute word probabilities
     logit_lstm = get_layer('ff')[1](tparams, proj_h, options, prefix='ff_logit_lstm', activ='linear')
@@ -883,7 +883,6 @@ if __name__ == '__main__':
           dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
           dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
           use_dropout=False,
-          reload_='saved_models/epoch4_nbUpd156000_model',
           reload_=False,
           correlation_coeff=0.1,
           clip_c=1.)

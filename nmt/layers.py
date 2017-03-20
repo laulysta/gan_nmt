@@ -129,8 +129,7 @@ def gru_layer(tparams, state_below, options, prefix='gru', mask=None, **kwargs):
     Ux = tparams[prefix_append(prefix, 'Ux')]
 
     def _step_slice(m_, x_, xx_, h_, U, Ux):
-        preact = tensor.dot(h_, U)
-        preact += x_
+        preact = tensor.dot(h_, U) + x_
 
         r = tensor.nnet.sigmoid(_slice(preact, 0, dim))
         u = tensor.nnet.sigmoid(_slice(preact, 1, dim))
@@ -258,7 +257,7 @@ def gru_cond_layer(tparams, state_below, options, prefix='gru', mask=None, conte
     # projected context
     assert context.ndim == 3, 'Context must be 3-d: #annotation x #sample x dim'
     pctx_ = tensor.dot(context, tparams[prefix_append(prefix, 'Wc_att')]) + tparams[prefix_append(prefix, 'b_att')]
-
+    # x_len  x batch_size x 2 dim (cc_)
     def _slice(_x, n, dim):
         if _x.ndim == 3:
             return _x[:, :, n * dim:(n + 1) * dim]
@@ -273,51 +272,49 @@ def gru_cond_layer(tparams, state_below, options, prefix='gru', mask=None, conte
     def _step_slice(m_, x_, xx_, h_, ctx_, alpha_, preactx2, pctx_, cc_,
                     U, Wc, W_comb_att, U_att, c_tt, Ux, Wcx, U_nl, Ux_nl, b_nl, bx_nl):
 
-        preact1 = tensor.dot(h_, U)
-        preact1 += x_
-        preact1 = tensor.nnet.sigmoid(preact1)
+        preact1 = tensor.dot(h_, U) + x_
+        preact1 = tensor.nnet.sigmoid(preact1)      # batch_size x 2 dim
 
-        r1 = _slice(preact1, 0, dim)   # (4)
-        u1 = _slice(preact1, 1, dim)   # (5)
+        r1 = _slice(preact1, 0, dim)   # (4)        # batch_size x dim
+        u1 = _slice(preact1, 1, dim)   # (5)        # batch_size x dim
 
         preactx1 = tensor.dot(h_, Ux)
         preactx1 *= r1
-        preactx1 += xx_
+        preactx1 += xx_                             # batch_size x dim
 
-        h1 = tensor.tanh(preactx1)  # (3)
+        h1 = tensor.tanh(preactx1)  # (3)           # batch_size x dim
 
         h1 = u1 * h_ + (1. - u1) * h1
-        h1 = m_[:, None] * h1 + (1. - m_)[:, None] * h_     # (2)
+        h1 = m_[:, None] * h1 + (1. - m_)[:, None] * h_     # (2)   # batch_size x dim
 
         # attention
-        pstate_ = tensor.dot(h1, W_comb_att)
-        pctx__ = pctx_ + pstate_[None, :, :]
-        # pctx__ += xc_
+        pstate_ = tensor.dot(h1, W_comb_att)            # batch_size x 2 dim
+        pctx__ = pctx_ + pstate_[None, :, :]            # x_len x batch_size x 2 dim
         pctx__ = tensor.tanh(pctx__)
-        alpha = tensor.dot(pctx__, U_att) + c_tt
-        alpha = alpha.reshape([alpha.shape[0], alpha.shape[1]])     # (8)
+        alpha = tensor.dot(pctx__, U_att) + c_tt        # x_len x batch_size x 1
+        alpha = alpha.reshape([alpha.shape[0], alpha.shape[1]])     # (8)   # x_len x batch_size
         alpha = tensor.exp(alpha)
         if context_mask:
             alpha = alpha * context_mask
         alpha = alpha / alpha.sum(0, keepdims=True)     # (7)
-        ctx_ = (cc_ * alpha[:, :, None]).sum(0)     # (6) current context
+        ctx_ = (cc_ * alpha[:, :, None]).sum(0)     # (6) current context # batch_size x 2 dim
 
-        preact2 = tensor.dot(h1, U_nl) + b_nl
-        preact2 += tensor.dot(ctx_, Wc)
-        preact2 = tensor.nnet.sigmoid(preact2)
+        preact2 = tensor.dot(h1, U_nl) + b_nl               # batch_size x 2 dim
+        preact2 = preact2 + tensor.dot(ctx_, Wc)            # batch_size x 2 dim
+        preact2 = tensor.nnet.sigmoid(preact2)      
 
-        r2 = _slice(preact2, 0, dim)
-        u2 = _slice(preact2, 1, dim)
+        r2 = _slice(preact2, 0, dim)        # batch_size x dim
+        u2 = _slice(preact2, 1, dim)        # batch_size x dim
 
-        preactx2 = tensor.dot(h1, Ux_nl) + bx_nl
+        preactx2 = tensor.dot(h1, Ux_nl) + bx_nl    # batch_size x dim
         preactx2 *= r2
-        preactx2 += tensor.dot(ctx_, Wcx)
+        preactx2 += tensor.dot(ctx_, Wcx)           # batch_size x dim
         # preactx2 is the new candidate pre-tanh
 
         h2 = tensor.tanh(preactx2)
 
         h2 = u2 * h1 + (1. - u2) * h2
-        h2 = m_[:, None] * h2 + (1. - m_)[:, None] * h1
+        h2 = m_[:, None] * h2 + (1. - m_)[:, None] * h1     # batch_size x dim
 
         return h2, ctx_, alpha.T, preactx2
 
@@ -391,56 +388,105 @@ def gru_cond_layer_FR(tparams, state_below, options, prefix='gru', mask=None, co
             return _x[:, :, n * dim:(n + 1) * dim]
         return _x[:, n * dim:(n + 1) * dim]
 
-    # projected x
-    state_belowx = tensor.dot(state_below, tparams[prefix_append(prefix, 'Wx')]) + tparams[prefix_append(prefix, 'bx')]
-    state_below_ = tensor.dot(state_below, tparams[prefix_append(prefix, 'W')]) + tparams[prefix_append(prefix, 'b')]
-    # state_belowc = tensor.dot(state_below, tparams[prefix_append(prefix, 'Wi_att')])
-    # import ipdb; ipdb.set_trace()
-    n_timesteps_trg = 1
+    def get_word_logits(h2, Wlogit1, Wlogit2):
+        # compute word logits
+        logit_lstm = tensor.dot(h2, Wlogit1)
+        #logit_lstm = ff1(tparams, h2, options, prefix='ff_logit_lstm', activ='linear')
+        #logit_prev = ff_nb1(tparams, x_, options, prefix='ff_nb_logit_prev', activ='linear')
+        #logit_ctx = ff_nb2(tparams, ctx_, options, prefix='ff_nb_logit_ctx', activ='linear')
+        #logit = tensor.tanh(logit_lstm + logit_prev + logit_ctx)
+        #logit = ff2(tparams, logit, options, prefix='ff_logit', activ='linear')
+        logit = tensor.tanh(logit_lstm)
+        logit = tensor.dot(logit_lstm, Wlogit2)
+        nw = tensor.argmax(logit, 1)
+        return nw
 
-    def _step_slice(nw, h_, ctx_, alpha_, preactx2, pctx_, cc_,
-                    U, Wc, W_comb_att, U_att, c_tt, Ux, Wcx, U_nl, Ux_nl, b_nl, bx_nl):
-
-        state_below = tparams['Wemb_dec'][x].reshape([n_timesteps_trg, n_samples, options['dim_word']])
-
-        x_ = tensor.dot(state_below, tparams[prefix_append(prefix, 'W')]) + tparams[prefix_append(prefix, 'b')]
-        xx_ = tensor.dot(state_below, tparams[prefix_append(prefix, 'Wx')]) + tparams[prefix_append(prefix, 'bx')]
-
-
-        preact1 = tensor.dot(h_, U)
-        preact1 += x_
-        preact1 = tensor.nnet.sigmoid(preact1)
-
-        r1 = _slice(preact1, 0, dim)   # (4) reset gate
-        u1 = _slice(preact1, 1, dim)   # (5) update gate
-
-        preactx1 = tensor.dot(h_, Ux) * r1 + xx_
-        h1 = tensor.tanh(preactx1)  # (3) new candidate memory state
-
-        h1 = u1 * h_ + (1. - u1) * h1
-        h1 = m_[:, None] * h1 + (1. - m_)[:, None] * h_     # (2)
-
+    def compute_alphas(h1, W_comb_att, pctx_, U_att, c_tt, context_mask):
         # attention
-        pstate_ = tensor.dot(h1, W_comb_att)
-        pctx__ = pctx_ + pstate_[None, :, :]
-        # pctx__ += xc_
+        pstate_ = tensor.dot(h1, W_comb_att)        # batch_size x 2 dim
+        pstate_ = pstate_[None, :, :]
+        pctx__ = pctx_ + pstate_                    # x_len x batch_size x 2 dim
         pctx__ = tensor.tanh(pctx__)
-        alpha = tensor.dot(pctx__, U_att) + c_tt
-        alpha = alpha.reshape([alpha.shape[0], alpha.shape[1]])     # (8)
+        alpha = tensor.dot(pctx__, U_att) + c_tt    # x_len x batch_size x 1
+        alpha = alpha.reshape([alpha.shape[0], alpha.shape[1]])     # (8) # x_len x batch_size
         alpha = tensor.exp(alpha)
         if context_mask:
             alpha = alpha * context_mask
         alpha = alpha / alpha.sum(0, keepdims=True)     # (7)
-        ctx_ = (cc_ * alpha[:, :, None]).sum(0)     # (6) current context
 
-        preact2 = tensor.dot(h1, U_nl) + b_nl
+        return alpha
+
+    # projected x
+    #state_belowx = tensor.dot(state_below, tparams[prefix_append(prefix, 'Wx')]) + tparams[prefix_append(prefix, 'bx')]
+    #state_below_ = tensor.dot(state_below, tparams[prefix_append(prefix, 'W')]) + tparams[prefix_append(prefix, 'b')]
+    
+
+    n_timesteps_trg = 1
+
+    def _step_slice(nw, h_, ctx_, alpha_, preactx2, pctx_, cc_,
+                    U, Wc, W_comb_att, U_att, c_tt, Ux, Wcx, U_nl, Ux_nl, b_nl, bx_nl,
+                    Wlogit1, Wlogit2, 
+                    Wxemb, Wemb, Wemb_dec):
+
+        state_below = Wemb_dec[nw].reshape([n_timesteps_trg, n_samples, options['dim_word']])
+
+        x_ = tensor.dot(state_below, Wemb)[0]      #  batch_size x 2 dim
+        xx_ = tensor.dot(state_below, Wxemb)[0]    # batch_size x dim
+
+        preact1 = tensor.dot(h_, U) + x_
+        preact1 = tensor.nnet.sigmoid(preact1)      # batch_size x 2 dim
+
+        r1 = _slice(preact1, 0, dim)   # (4) reset gate         # batch_size x dim
+        u1 = _slice(preact1, 1, dim)   # (5) update gate       # batch_size x dim
+
+        preactx1 = tensor.dot(h_, Ux) * r1 + xx_
+        h1 = tensor.tanh(preactx1)  # (3) new candidate memory state
+                                    # batch_size x dim
+
+        h1 = u1 * h_ + (1. - u1) * h1
+        # h1 = m_[:, None] * h1 + (1. - m_)[:, None] * h_     # (2)
+
+
+        alpha = disconnected_grad(compute_alphas(h1, W_comb_att, pctx_, U_att, c_tt, context_mask))
+
+        ctx_ = disconnected_grad((cc_ * alpha[:, :, None]).sum(0))     # (6) current context   # batch_size x 2 dim
+
+        preact2 = tensor.dot(h1, U_nl) + b_nl       # batch_size x 2 dim
         preact2 += tensor.dot(ctx_, Wc)
         preact2 = tensor.nnet.sigmoid(preact2)
 
-        r2 = _slice(preact2, 0, dim)
-        u2 = _slice(preact2, 1, dim)
+        r2 = _slice(preact2, 0, dim)        # batch_size x dim
+        u2 = _slice(preact2, 1, dim)        # batch_size x dim
 
-        preactx2 = tensor.dot(h1, Ux_nl) + bx_nl
+        preactx2 = tensor.dot(h1, Ux_nl) + bx_nl    
+        preactx2 *= r2
+        preactx2 += tensor.dot(ctx_, Wcx)
+        # preactx2 is the new candidate pre-tanh
+        h2 = tensor.tanh(preactx2)
+        h2 = u2 * h1 + (1. - u2) * h2
+
+        '''
+        # attention
+        pstate_ = tensor.dot(h1, W_comb_att)        # batch_size x 2 dim
+        pstate_ = pstate_[None, :, :]
+        pctx__ = pctx_ + pstate_                    # x_len x batch_size x 2 dim
+        pctx__ = tensor.tanh(pctx__)
+        alpha = tensor.dot(pctx__, U_att) + c_tt    # x_len x batch_size x 1
+        alpha = alpha.reshape([alpha.shape[0], alpha.shape[1]])     # (8) # x_len x batch_size
+        alpha = tensor.exp(alpha)
+        if context_mask:
+            alpha = alpha * context_mask
+        alpha = alpha / alpha.sum(0, keepdims=True)     # (7)
+        ctx_ = (cc_ * alpha[:, :, None]).sum(0)     # (6) current context   # batch_size x 2 dim
+
+        preact2 = tensor.dot(h1, U_nl) + b_nl       # batch_size x 2 dim
+        preact2 += tensor.dot(ctx_, Wc)
+        preact2 = tensor.nnet.sigmoid(preact2)
+
+        r2 = _slice(preact2, 0, dim)        # batch_size x dim
+        u2 = _slice(preact2, 1, dim)        # batch_size x dim
+
+        preactx2 = tensor.dot(h1, Ux_nl) + bx_nl    
         preactx2 *= r2
         preactx2 += tensor.dot(ctx_, Wcx)
         # preactx2 is the new candidate pre-tanh
@@ -448,23 +494,21 @@ def gru_cond_layer_FR(tparams, state_below, options, prefix='gru', mask=None, co
         h2 = tensor.tanh(preactx2)
 
         h2 = u2 * h1 + (1. - u2) * h2
-        h2 = m_[:, None] * h2 + (1. - m_)[:, None] * h1
-
-        # compute word logits
-        logit_lstm = disconnected_grad(get_layer('ff')[1](tparams, h2, options, prefix='ff_logit_lstm', activ='linear'))
-        logit_prev = disconnected_grad(get_layer('ff_nb')[1](tparams, x_, options, prefix='ff_nb_logit_prev', activ='linear'))
-        logit_ctx = disconnected_grad(get_layer('ff_nb')[1](tparams, ctx_, options, prefix='ff_nb_logit_ctx', activ='linear'))
-
-        logit = disconnected_grad(tensor.tanh(logit_lstm + logit_prev + logit_ctx))
-        logit = disconnected_grad(get_layer('ff')[1](tparams, logit, options, prefix='ff_logit', activ='linear'))
-        nw = disconnected_grad(logit.argmax())
-
+        #h2 = m_[:, None] * h2 + (1. - m_)[:, None] * h1
+        '''
+        # ff1 = get_layer('ff')[1]
+        # ff_nb1 = get_layer('ff_nb')[1]
+        # ff_nb2 = get_layer('ff_nb')[1]
+        # ff2 = get_layer('ff')[1]
+        nw = disconnected_grad(get_word_logits(h2, Wlogit1, Wlogit2))
         return nw, h2, ctx_, alpha.T, preactx2
+
 
 
     # seqs = [mask, state_below_, state_belowx]
     _step = _step_slice
 
+    print prefix
     shared_vars = [tparams[prefix_append(prefix, 'U')],
                    tparams[prefix_append(prefix, 'Wc')],
                    tparams[prefix_append(prefix, 'W_comb_att')],
@@ -475,13 +519,19 @@ def gru_cond_layer_FR(tparams, state_below, options, prefix='gru', mask=None, co
                    tparams[prefix_append(prefix, 'U_nl')],
                    tparams[prefix_append(prefix, 'Ux_nl')],
                    tparams[prefix_append(prefix, 'b_nl')],
-                   tparams[prefix_append(prefix, 'bx_nl')]]
+                   tparams[prefix_append(prefix, 'bx_nl')],
+                   tparams[prefix_append('ff_logit_lstm', 'W')],
+                   tparams[prefix_append('ff_logit', 'W')],
+                   tparams[prefix_append(prefix, 'Wx')],
+                   tparams[prefix_append(prefix, 'W')],
+                   tparams['Wemb_dec']]
 
     if one_step:
-        [nw, h2, ctx_, alphaT, preactx2] = _step( * (seqs + [init_state, None, None, None, pctx_, context] + shared_vars))
+        [nw, h2, ctx_, alphaT, preactx2] = _step( * ([None, init_state, None, None, None, pctx_, context] + shared_vars))
     else:
         [nw, h2, ctx_, alphaT, preactx2], updates = theano.scan(_step,
-                                                             outputs_info=[0, init_state,
+                                                             outputs_info=[tensor.alloc(0, n_samples).astype('int64'),
+                                                                           init_state,
                                                                            tensor.alloc(0., n_samples, context.shape[2]),
                                                                            tensor.alloc(0., n_samples, context.shape[0]),
                                                                            dict(initial=tensor.alloc(0., n_samples, init_state.shape[1]), taps=None)],
