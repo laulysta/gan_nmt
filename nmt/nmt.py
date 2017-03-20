@@ -111,9 +111,6 @@ def init_params(options):
     #Adversarial network
     params = get_layer(options['encoder'])[0](options, params, prefix='encoder_adversarial',
                                               nin=options['dim'] * 2, dim=options['dim'] * 2)
-    params = get_layer('ff')[0](options, params, prefix='ff1_adversarial', nin=options['dim'] * 2, nout=options['dim'] * 2, ortho=False)
-    params = get_layer('ff')[0](options, params, prefix='ff2_adversarial', nin=options['dim'] * 2, nout=options['dim'] * 2, ortho=False)
-    params = get_layer('ff')[0](options, params, prefix='ff_out_adversarial', nin=options['dim'] * 2, nout=1, ortho=False)
 
     return params
 

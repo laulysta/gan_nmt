@@ -10,6 +10,7 @@ layers = {'ff': ('param_init_fflayer', 'fflayer'),
           'lstm': ('param_init_lstm', 'lstm_layer'),
           'lstm_cond': ('param_init_lstm_cond', 'lstm_cond_layer'),
           'gru': ('param_init_gru', 'gru_layer'),
+          'gru_w_mlp': ('param_init_gru_w_mlp', 'gru_layer_W_mlp'),
           'gru_cond': ('param_init_gru_cond', 'gru_cond_layer'),
           'gru_cond_FR': ('param_init_gru_cond', 'gru_cond_layer_FR'), # VERIFY that param_init_gru_cond can be reused
           'gru_cond_simple': ('param_init_gru_cond_simple', 'gru_cond_simple_layer'),
@@ -160,6 +161,86 @@ def gru_layer(tparams, state_below, options, prefix='gru', mask=None, **kwargs):
     rval = [rval]
     return rval
 
+def param_init_gru_w_mlp(options, params, prefix='gru', nin=None, dim=None, hiero=False):
+    if nin is None:
+        nin = options['dim_proj']
+    if dim is None:
+        dim = options['dim_proj']
+    if not hiero:
+        W = numpy.concatenate([norm_weight(nin, dim),
+                               norm_weight(nin, dim)],
+                              axis=1)
+
+        params[prefix_append(prefix, 'W')] = W
+        params[prefix_append(prefix, 'b')] = numpy.zeros((2 * dim,)).astype('float32')
+    U = numpy.concatenate([ortho_weight(dim),
+                           ortho_weight(dim)], axis=1)
+    params[prefix_append(prefix, 'U')] = U
+
+    Wx = norm_weight(nin, dim)
+    params[prefix_append(prefix, 'Wx')] = Wx
+    Ux = ortho_weight(dim)
+    params[prefix_append(prefix, 'Ux')] = Ux
+    params[prefix_append(prefix, 'bx')] = numpy.zeros((dim,)).astype('float32')
+
+    params = get_layer('ff')[0](options, params, prefix=prefix + '_ff1', nin=options['dim'] * 2, nout=options['dim'] * 2, ortho=False)
+    params = get_layer('ff')[0](options, params, prefix=prefix + '_ff2', nin=options['dim'] * 2, nout=options['dim'] * 2, ortho=False)
+    params = get_layer('ff')[0](options, params, prefix=prefix + 'ff_out', nin=options['dim'] * 2, nout=1, ortho=False)
+    return params
+
+def gru_layer_w_mlp(tparams, state_below, options, prefix='gru', mask=None, **kwargs):
+    nsteps = state_below.shape[0]
+    if state_below.ndim == 3:
+        n_samples = state_below.shape[1]
+    else:
+        n_samples = 1
+
+    dim = tparams[prefix_append(prefix,'Ux')].shape[1]
+
+    if mask is None:
+        mask = tensor.alloc(1., state_below.shape[0], 1)
+
+    def _slice(_x, n, dim):
+        if _x.ndim == 3:
+            return _x[:, :, n*dim:(n+1)*dim]
+        return _x[:, n*dim:(n+1)*dim]
+
+    state_below_ = tensor.dot(state_below, tparams[prefix_append(prefix, 'W')]) + tparams[prefix_append(prefix, 'b')]
+    state_belowx = tensor.dot(state_below, tparams[prefix_append(prefix, 'Wx')]) + tparams[prefix_append(prefix, 'bx')]
+    U = tparams[prefix_append(prefix, 'U')]
+    Ux = tparams[prefix_append(prefix, 'Ux')]
+
+    def _step_slice(m_, x_, xx_, h_, U, Ux):
+        preact = tensor.dot(h_, U) + x_
+
+        r = tensor.nnet.sigmoid(_slice(preact, 0, dim))
+        u = tensor.nnet.sigmoid(_slice(preact, 1, dim))
+
+        preactx = tensor.dot(h_, Ux)
+        preactx = preactx * r
+        preactx = preactx + xx_
+
+        h = tensor.tanh(preactx)
+
+        h = u * h_ + (1. - u) * h
+        h = m_[:, None] * h + (1. - m_)[:, None] * h_
+
+        return h  #, r, u, preact, preactx
+
+    seqs = [mask, state_below_, state_belowx]
+    _step = _step_slice
+
+    rval, updates = theano.scan(_step,
+                                sequences=seqs,
+                                outputs_info=[tensor.alloc(0., n_samples, dim)],
+                                non_sequences=[tparams[prefix_append(prefix, 'U')],
+                                               tparams[prefix_append(prefix, 'Ux')]],
+                                name=prefix_append(prefix, '_layers'),
+                                n_steps=nsteps,
+                                profile=profile,
+                                strict=True)
+    rval = [rval]
+    return rval
 
 # Conditional GRU layer with Attention
 def param_init_gru_cond(options, params, prefix='gru_cond', nin=None, dim=None, dimctx=None):
