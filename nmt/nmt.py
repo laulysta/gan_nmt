@@ -261,7 +261,7 @@ def build_model(tparams, options):
         opt_ret['dec_alphas'] = proj[2]
 
     B_teacher_forcing = proj[3]
-    D_real = get_layer('gru_w_mlp')[0](options, params, prefix='encoder_adversarial')
+    D_real = get_layer('gru_w_mlp')[1](options, params, prefix='encoder_adversarial')
 
     # Decoder in Free Running mode
     decoder_FR = get_layer(options['decoder_FR'])[1]

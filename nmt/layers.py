@@ -12,7 +12,7 @@ layers = {'ff': ('param_init_fflayer', 'fflayer'),
           'lstm': ('param_init_lstm', 'lstm_layer'),
           'lstm_cond': ('param_init_lstm_cond', 'lstm_cond_layer'),
           'gru': ('param_init_gru', 'gru_layer'),
-          'gru_w_mlp': ('param_init_gru_w_mlp', 'gru_layer_W_mlp'),
+          'gru_w_mlp': ('param_init_gru_w_mlp', 'gru_layer_w_mlp'),
           'gru_cond': ('param_init_gru_cond', 'gru_cond_layer'),
           'gru_cond_FR': ('param_init_gru_cond', 'gru_cond_layer_FR'), # VERIFY that param_init_gru_cond can be reused
           'gru_cond_simple': ('param_init_gru_cond_simple', 'gru_cond_simple_layer'),
