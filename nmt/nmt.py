@@ -109,8 +109,8 @@ def init_params(options):
     #                                               dimctx=ctxdim)
 
     #Adversarial network
-    params = get_layer(options['encoder'])[0](options, params, prefix='encoder_adversarial',
-                                              nin=options['dim'] * 2, dim=options['dim'] * 2)
+    params = get_layer('gru_w_mlp')[0](options, params, prefix='encoder_adversarial',
+                                       nin=options['dim'] * 2, dim=options['dim'] * 2)
 
     return params
 
@@ -261,6 +261,8 @@ def build_model(tparams, options):
         opt_ret['dec_alphas'] = proj[2]
 
     B_teacher_forcing = proj[3]
+    D_real = get_layer('gru_w_mlp')[0](options, params, prefix='encoder_adversarial')
+
     # Decoder in Free Running mode
     decoder_FR = get_layer(options['decoder_FR'])[1]
     proj_FR = decoder_FR(tparams, emb, options, prefix='decoder', mask=y_mask,
