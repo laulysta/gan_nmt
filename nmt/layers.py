@@ -354,8 +354,6 @@ def gru_cond_layer(tparams, state_below, options, prefix='gru', mask=None, conte
     # output info: initial state for the scan function
     return [h2, ctx_, alphaT, preactx2]
 
-
-
 def gru_cond_layer_FR(tparams, state_below, options, prefix='gru', mask=None, context=None, one_step=False, init_memory=None, init_state=None, context_mask=None, **kwargs):
 
     assert context, 'Context must be provided'
@@ -388,16 +386,20 @@ def gru_cond_layer_FR(tparams, state_below, options, prefix='gru', mask=None, co
             return _x[:, :, n * dim:(n + 1) * dim]
         return _x[:, n * dim:(n + 1) * dim]
 
-    def get_word_logits(h2, Wlogit1, Wlogit2):
+    def get_word_logits(h2, x_, ctx, 
+                        W_ff_logit_lstm, b_ff_logit_lstm,
+                        W_ff_nb_logit_prev, W_ff_nb_logit_ctx,
+                        W_logit, b_logit):
         # compute word logits
-        logit_lstm = tensor.dot(h2, Wlogit1)
+        logit_lstm = linear(tensor.dot(h2, W_ff_logit_lstm) + b_ff_logit_lstm)
         #logit_lstm = ff1(tparams, h2, options, prefix='ff_logit_lstm', activ='linear')
+        logit_prev = linear(tensor.dot(x_, W_ff_nb_logit_prev))
         #logit_prev = ff_nb1(tparams, x_, options, prefix='ff_nb_logit_prev', activ='linear')
+        logit_ctx = linear(tensor.dot(ctx_, W_ff_nb_logit_ctx))
         #logit_ctx = ff_nb2(tparams, ctx_, options, prefix='ff_nb_logit_ctx', activ='linear')
-        #logit = tensor.tanh(logit_lstm + logit_prev + logit_ctx)
+        logit = tensor.tanh(logit_lstm + logit_prev + logit_ctx)
         #logit = ff2(tparams, logit, options, prefix='ff_logit', activ='linear')
-        logit = tensor.tanh(logit_lstm)
-        logit = tensor.dot(logit_lstm, Wlogit2)
+        logit = linear(tensor.dot(logit, W_logit) + b_logit)
         nw = tensor.argmax(logit, 1)
         return nw
 
@@ -425,13 +427,15 @@ def gru_cond_layer_FR(tparams, state_below, options, prefix='gru', mask=None, co
 
     def _step_slice(nw, h_, ctx_, alpha_, preactx2, pctx_, cc_,
                     U, Wc, W_comb_att, U_att, c_tt, Ux, Wcx, U_nl, Ux_nl, b_nl, bx_nl,
-                    Wlogit1, Wlogit2, 
-                    Wxemb, Wemb, Wemb_dec):
+                    W_ff_logit_lstm, b_ff_logit_lstm,
+                    W_ff_nb_logit_prev, W_ff_nb_logit_ctx,
+                    W_logit, b_logit, 
+                    Wxemb_proj, Wemb_proj, W_embedding):
 
-        state_below = Wemb_dec[nw].reshape([n_timesteps_trg, n_samples, options['dim_word']])
+        state_below = W_embedding[nw].reshape([n_timesteps_trg, n_samples, options['dim_word']])
 
-        x_ = tensor.dot(state_below, Wemb)[0]      #  batch_size x 2 dim
-        xx_ = tensor.dot(state_below, Wxemb)[0]    # batch_size x dim
+        x_ = tensor.dot(state_below, Wemb_proj)[0]      #  batch_size x 2 dim
+        xx_ = tensor.dot(state_below, Wxemb_proj)[0]    # batch_size x dim
 
         preact1 = tensor.dot(h_, U) + x_
         preact1 = tensor.nnet.sigmoid(preact1)      # batch_size x 2 dim
@@ -445,7 +449,6 @@ def gru_cond_layer_FR(tparams, state_below, options, prefix='gru', mask=None, co
 
         h1 = u1 * h_ + (1. - u1) * h1
         # h1 = m_[:, None] * h1 + (1. - m_)[:, None] * h_     # (2)
-
 
         alpha = disconnected_grad(compute_alphas(h1, W_comb_att, pctx_, U_att, c_tt, context_mask))
 
@@ -465,41 +468,6 @@ def gru_cond_layer_FR(tparams, state_below, options, prefix='gru', mask=None, co
         h2 = tensor.tanh(preactx2)
         h2 = u2 * h1 + (1. - u2) * h2
 
-        '''
-        # attention
-        pstate_ = tensor.dot(h1, W_comb_att)        # batch_size x 2 dim
-        pstate_ = pstate_[None, :, :]
-        pctx__ = pctx_ + pstate_                    # x_len x batch_size x 2 dim
-        pctx__ = tensor.tanh(pctx__)
-        alpha = tensor.dot(pctx__, U_att) + c_tt    # x_len x batch_size x 1
-        alpha = alpha.reshape([alpha.shape[0], alpha.shape[1]])     # (8) # x_len x batch_size
-        alpha = tensor.exp(alpha)
-        if context_mask:
-            alpha = alpha * context_mask
-        alpha = alpha / alpha.sum(0, keepdims=True)     # (7)
-        ctx_ = (cc_ * alpha[:, :, None]).sum(0)     # (6) current context   # batch_size x 2 dim
-
-        preact2 = tensor.dot(h1, U_nl) + b_nl       # batch_size x 2 dim
-        preact2 += tensor.dot(ctx_, Wc)
-        preact2 = tensor.nnet.sigmoid(preact2)
-
-        r2 = _slice(preact2, 0, dim)        # batch_size x dim
-        u2 = _slice(preact2, 1, dim)        # batch_size x dim
-
-        preactx2 = tensor.dot(h1, Ux_nl) + bx_nl    
-        preactx2 *= r2
-        preactx2 += tensor.dot(ctx_, Wcx)
-        # preactx2 is the new candidate pre-tanh
-
-        h2 = tensor.tanh(preactx2)
-
-        h2 = u2 * h1 + (1. - u2) * h2
-        #h2 = m_[:, None] * h2 + (1. - m_)[:, None] * h1
-        '''
-        # ff1 = get_layer('ff')[1]
-        # ff_nb1 = get_layer('ff_nb')[1]
-        # ff_nb2 = get_layer('ff_nb')[1]
-        # ff2 = get_layer('ff')[1]
         nw = disconnected_grad(get_word_logits(h2, Wlogit1, Wlogit2))
         return nw, h2, ctx_, alpha.T, preactx2
 
@@ -521,7 +489,11 @@ def gru_cond_layer_FR(tparams, state_below, options, prefix='gru', mask=None, co
                    tparams[prefix_append(prefix, 'b_nl')],
                    tparams[prefix_append(prefix, 'bx_nl')],
                    tparams[prefix_append('ff_logit_lstm', 'W')],
+                   tparams[prefix_append('ff_logit_lstm', 'b')],
+                   tparams[prefix_append('ff_nb_logit_prev', 'W')],
+                   tparams[prefix_append('ff_nb_logit_ctx', 'W')],
                    tparams[prefix_append('ff_logit', 'W')],
+                   tparams[prefix_append('ff_logit', 'b')]
                    tparams[prefix_append(prefix, 'Wx')],
                    tparams[prefix_append(prefix, 'W')],
                    tparams['Wemb_dec']]
