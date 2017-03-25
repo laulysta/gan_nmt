@@ -231,6 +231,7 @@ def gru_layer_w_mlp(tparams, state_below, options, prefix='gru', mask=None, **kw
         out = relu(tensor.dot(h, Wff1) + bff1)
         out = relu(tensor.dot(out, Wff2) + bff2)
         out = sigmoid(tensor.dot(out, Wff2) + bff2)
+        out = tensor.log(out)
 
         return h, out  #, r, u, preact, preactx
 
