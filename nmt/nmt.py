@@ -669,8 +669,8 @@ def train(dim_word=100,  # word vector dimensionality
     params_nll = init_params_nll(tparams)
     params_adversarial = init_params_adversarial(tparams)
     grads = tensor.grad(cost, wrt=itemlist(params_nll))
-    grads_discriminator = tensor.grad(cost_discriminator, wrt=itemlist(params_advesrarial))
-    grads_generator = tensor.grad(cost_discriminator, wrt=itemlist(params_advesrarial))
+    grads_discriminator = tensor.grad(cost_discriminator, wrt=itemlist(params_adversarial))
+    grads_generator = tensor.grad(cost_discriminator, wrt=itemlist(params_adversarial))
     print 'Done'
     print 'Building f_grad...',
     f_grad = theano.function(inps, grads, profile=profile)
