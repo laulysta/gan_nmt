@@ -149,16 +149,16 @@ def build_discriminator_adversarial(tparams, options):
     proj_orig = proj_orig[1]
     proj_fake = proj_fake[1]
 
-    proj_orig_r = encoder(tparams, B_orig_r, options, prefix='encoder_adversarial_r')
-    proj_fake_r = encoder(tparams, B_fake_r, options, prefix='encoder_adversarial_r')
+    proj_orig_r = encoder(tparams, B_orig_r, options, prefix='encoder_adversarial')
+    proj_fake_r = encoder(tparams, B_fake_r, options, prefix='encoder_adversarial')
     proj_orig_r = proj_orig_r[1]
     proj_fake_r = proj_fake_r[1]
 
     D_orig = concatenate([proj_orig[0], proj_orig_r[0][::-1]], axis=proj_orig[0].ndim - 1)
     D_fake = concatenate([proj_fake[0], proj_fake_r[0][::-1]], axis=proj_fake[0].ndim - 1)
 
-    D_orig = theano.sum(D_orig)
-    D_fake = theano.sum(D_fake)
+    D_orig = tensor.sum(D_orig)
+    D_fake = tensor.sum(D_fake)
 
     inps = [B_orig, B_fake]
     outs = [D_orig, D_fake]
