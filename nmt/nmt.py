@@ -625,6 +625,7 @@ def train(dim_word=100,  # word vector dimensionality
 
     trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost, cost_discriminator, cost_generator = build_model(tparams, model_options)
     inps = [x, x_mask, y, y_mask]
+    inps_gen_adversarial = [x, x_mask]
 
     # theano.printing.debugprint(cost.mean(), file=open('cost.txt', 'w'))
 
@@ -656,7 +657,7 @@ def train(dim_word=100,  # word vector dimensionality
     print 'Building f_cost...',
     f_cost = theano.function(inps, cost, profile=profile)
     f_cost_discriminator = theano.function(inps, cost_discriminator, profile=profile)
-    f_cost_generator = theano.function(inps, cost_generator, profile=profile)
+    f_cost_generator = theano.function(inps_gen_adversarial, cost_generator, profile=profile)
     print 'Done'
 
     if model_options['hiero'] is not None:
