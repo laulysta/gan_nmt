@@ -66,6 +66,15 @@ def init_params_adversarial(tparams):
             params_adversarial[kk] = tparams[kk]
     return params_adversarial
 
+def init_params_gen_adversarial(tparams):
+    disconnected_params = ['decoder_W_comb_att', 'decoder_U_att',
+                            'decoder_c_tt']
+    params_adversarial = OrderedDict()
+    for kk, pp in tparams.iteritems():
+        if kk not in disconnected_params and not 'ff_logit' in kk:
+            params_adversarial[kk] = tparams[kk]
+    return params_adversarial
+
 # load parameters
 def load_params(path, params):
     pp = numpy.load(path)
@@ -669,9 +678,11 @@ def train(dim_word=100,  # word vector dimensionality
     print 'Computing gradient...',
     params_nll = init_params_nll(tparams)
     params_adversarial = init_params_adversarial(tparams)
+    params_gen_adversarial = init_params_gen_adversarial(tparams)
+
     grads = tensor.grad(cost, wrt=itemlist(params_nll))
     grads_discriminator = tensor.grad(cost_discriminator, wrt=itemlist(params_adversarial))
-    grads_generator = tensor.grad(cost_generator, wrt=itemlist(tparams))
+    grads_generator = tensor.grad(cost_generator, wrt=itemlist(params_gen_adversarial))
     print 'Done'
     print 'Building f_grad...',
     f_grad = theano.function(inps, grads, profile=profile)
