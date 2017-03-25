@@ -305,22 +305,7 @@ def build_model(tparams, options):
     cost = cost.reshape([y.shape[0], y.shape[1]])
     cost = (cost * y_mask).sum(0)
 
-    # Adversarial step
-    D_adversarial = build_discriminator_adversarial(tparams, options)
-
-    D_orig, D_fake = D_adversarial(B_teacher_forcing, B_free_running)
-    # inps = [B_orig, B_fake]
-    # outs = [D_orig, D_fake]
-    copute_cost_discriminator = build_adversarial_discriminator_cost(tparams, options)
-    # inps = [D_orig, D_fake]
-    # outs = [cost]
-    cost_discriminator = compute_cost_discriminator(D_orig, D_fake)
-
-    compute_cost_generator = build_adversarial_generator_cost(tparams, options)
-    cost_generator = compute_cost_generator(D_fake)
-
-
-    return trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost, cost_discriminator, cost_generator
+    return trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost, B_teacher_forcing, B_free_running
 
 
 # build a sampler
@@ -621,9 +606,26 @@ def train(dim_word=100,  # word vector dimensionality
 
     tparams = init_tparams(params)
 
-    trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost, cost_discriminator, cost_generator = build_model(tparams, model_options)
+    trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost, B_teacher_forcing, B_free_running = build_model(tparams, model_options)
     inps = [x, x_mask, y, y_mask]
 
+    ###############################
+    ###############################
+    # Adversarial step
+    D_adversarial = build_discriminator_adversarial(tparams, model_options)
+
+    D_orig, D_fake = D_adversarial(B_teacher_forcing, B_free_running)
+    # inps = [B_orig, B_fake]
+    # outs = [D_orig, D_fake]
+    copute_cost_discriminator = build_adversarial_discriminator_cost(tparams, model_options)
+    # inps = [D_orig, D_fake]
+    # outs = [cost]
+    cost_discriminator = compute_cost_discriminator(D_orig, D_fake)
+
+    compute_cost_generator = build_adversarial_generator_cost(tparams, model_options)
+    cost_generator = compute_cost_generator(D_fake)
+    #########################
+    #########################
     # theano.printing.debugprint(cost.mean(), file=open('cost.txt', 'w'))
 
     print 'Buliding sampler'
