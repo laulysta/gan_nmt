@@ -125,12 +125,12 @@ def init_params(options):
 
     return params
 
-def build_discriminator_adversarial(tparams, options):
+def build_discriminator_adversarial(B_orig, B_fake, tparams, options):
     trng = RandomStreams(1234)
 
     # description string: #hidden_states x #samples
-    B_orig = tensor.matrix('B_orig', dtype='float32')
-    B_fake = tensor.matrix('B_fake', dtype='float32')
+    #B_orig = tensor.matrix('B_orig', dtype='float32')
+    #B_fake = tensor.matrix('B_fake', dtype='float32')
     #h_orig_mask = tensor.matrix('h_orig_mask', dtype='float32')
     #h_fake_mask = tensor.matrix('h_fake_mask', dtype='float32')
 
@@ -168,9 +168,9 @@ def build_discriminator_adversarial(tparams, options):
     # return discriminator_adversarial
     return D_orig, D_fake
 
-def build_adversarial_discriminator_cost(tparams, options):
-    D_orig = tensor.matrix('D_orig', dtype='float32')
-    D_fake = tensor.matrix('D_fake', dtype='float32')
+def build_adversarial_discriminator_cost(D_orig, D_fake, tparams, options):
+    #D_orig = tensor.matrix('D_orig', dtype='float32')
+    #D_fake = tensor.matrix('D_fake', dtype='float32')
 
     # Review
     cost = -tensor.mean(D_orig * tensor.log(D_orig) + (1 - D_fake) * tensor.log(1 - D_fake))
@@ -181,8 +181,8 @@ def build_adversarial_discriminator_cost(tparams, options):
     #return discriminator_adversarial_cost
     return cost
 
-def build_adversarial_generator_cost(tparams, options):
-    D_fake = tensor.matrix('D_fake', dtype='float32')
+def build_adversarial_generator_cost(D_fake,tparams, options):
+    #D_fake = tensor.matrix('D_fake', dtype='float32')
     cost = -tensor.mean(tensor.log(D_fake))
 
     #adversarial_generator_cost = theano.function([D_fake], [cost], name='adversarial_generator_cost', profile=profile)
@@ -308,19 +308,19 @@ def build_model(tparams, options):
 
     # Adversarial step
     #D_adversarial = build_discriminator_adversarial(tparams, options)
-    D_orig, D_fake = build_discriminator_adversarial(tparams, options)
+    D_orig, D_fake = build_discriminator_adversarial(B_teacher_forcing, B_free_running, tparams, options)
     #D_orig, D_fake = D_adversarial(B_teacher_forcing, B_free_running)
     # inps = [B_orig, B_fake]
     # outs = [D_orig, D_fake]
     #copute_cost_discriminator = build_adversarial_discriminator_cost(tparams, options)
-    cost_discriminator = build_adversarial_discriminator_cost(tparams, options)
+    cost_discriminator = build_adversarial_discriminator_cost(D_orig, D_fake,tparams, options)
     # inps = [D_orig, D_fake]
     # outs = [cost]
     #cost_discriminator = compute_cost_discriminator(D_orig, D_fake)
 
     # compute_cost_generator = build_adversarial_generator_cost(tparams, options)
     # cost_generator = compute_cost_generator(D_fake)
-    cost_generator = build_adversarial_generator_cost(tparams, options)
+    cost_generator = build_adversarial_generator_cost(D_fake,tparams, options)
 
     return trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost, cost_discriminator, cost_generator
 
