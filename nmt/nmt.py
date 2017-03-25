@@ -62,6 +62,7 @@ def init_params_nll(tparams):
 def init_params_adversarial(tparams):
     params_adversarial = OrderedDict()
     for kk, pp in tparams.iteritems():
+        if 'adversarial' in kk:
         params_adversarial[kk] = tparams[kk]
     return params_adversarial
 
@@ -670,7 +671,7 @@ def train(dim_word=100,  # word vector dimensionality
     params_adversarial = init_params_adversarial(tparams)
     grads = tensor.grad(cost, wrt=itemlist(params_nll))
     grads_discriminator = tensor.grad(cost_discriminator, wrt=itemlist(params_adversarial))
-    grads_generator = tensor.grad(cost_discriminator, wrt=itemlist(params_adversarial))
+    grads_generator = tensor.grad(cost_generator, wrt=itemlist(tparams))
     print 'Done'
     print 'Building f_grad...',
     f_grad = theano.function(inps, grads, profile=profile)
