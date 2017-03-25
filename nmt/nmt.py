@@ -63,7 +63,7 @@ def init_params_adversarial(tparams):
     params_adversarial = OrderedDict()
     for kk, pp in tparams.iteritems():
         if 'adversarial' in kk:
-        params_adversarial[kk] = tparams[kk]
+            params_adversarial[kk] = tparams[kk]
     return params_adversarial
 
 # load parameters
