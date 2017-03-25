@@ -72,7 +72,7 @@ def init_params_gen_adversarial(tparams):
                             'decoder_b_att']
     params_adversarial = OrderedDict()
     for kk, pp in tparams.iteritems():
-        if kk not in disconnected_params and not 'ff_logit' in kk:
+        if kk not in disconnected_params and not 'ff_logit' in kk and not 'ff_nb' in kk:
             params_adversarial[kk] = tparams[kk]
     return params_adversarial
 
