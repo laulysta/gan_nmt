@@ -144,13 +144,13 @@ def build_discriminator_adversarial(tparams, options):
 
     # RNN for adversarial network
     encoder = get_layer(options['encoder_adversarial'])[1]
-    proj_orig = encoder(tparams, B_orig, options, prefix='encoder_adersarial')
-    proj_fake = encoder(tparams, B_fake, options, prefix='encoder_adersarial')
+    proj_orig = encoder(tparams, B_orig, options, prefix='encoder_adversarial')
+    proj_fake = encoder(tparams, B_fake, options, prefix='encoder_adversarial')
     proj_orig = proj_orig[1]
     proj_fake = proj_fake[1]
 
-    proj_orig_r = encoder(tparams, B_orig_r, options, prefix='encoder_adersarial_r')
-    proj_fake_r = encoder(tparams, B_fake_r, options, prefix='encoder_adersarial_r')
+    proj_orig_r = encoder(tparams, B_orig_r, options, prefix='encoder_adversarial_r')
+    proj_fake_r = encoder(tparams, B_fake_r, options, prefix='encoder_adversarial_r')
     proj_orig_r = proj_orig_r[1]
     proj_fake_r = proj_fake_r[1]
 
