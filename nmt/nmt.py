@@ -144,13 +144,13 @@ def build_discriminator_adversarial(tparams, options):
 
     # RNN for adversarial network
     encoder = get_layer(options['encoder_adversarial'])[1]
-    proj_orig = encoder(tparams, B_orig, options, prefix='encoder_adersarial', mask=x_mask_orig)
-    proj_fake = encoder(tparams, B_fake, options, prefix='encoder_adersarial', mask=x_mask_fake)
+    proj_orig = encoder(tparams, B_orig, options, prefix='encoder_adersarial')
+    proj_fake = encoder(tparams, B_fake, options, prefix='encoder_adersarial')
     proj_orig = proj_orig[1]
     proj_fake = proj_fake[1]
 
-    proj_orig_r = encoder(tparams, B_orig_r, options, prefix='encoder_adersarial_r', mask=x_mask_orig_r)
-    proj_fake_r = encoder(tparams, B_fake_r, options, prefix='encoder_adersarial_r', mask=x_mask_fake_r)
+    proj_orig_r = encoder(tparams, B_orig_r, options, prefix='encoder_adersarial_r')
+    proj_fake_r = encoder(tparams, B_fake_r, options, prefix='encoder_adersarial_r')
     proj_orig_r = proj_orig_r[1]
     proj_fake_r = proj_fake_r[1]
 
@@ -596,7 +596,7 @@ def train(dim_word=100,  # word vector dimensionality
 
     model_options = copy.copy(inspect.currentframe().f_locals)
     model_options['decoder_FR'] = 'gru_cond_FR'
-    model_options['encoder_adversarial'] = 'gru_layer_w_mlp'
+    model_options['encoder_adversarial'] = 'gru_w_mlp'
     # model_options = locals().copy()
     if dictionary:
         word_dict, word_idict = load_dictionary(dictionary)
