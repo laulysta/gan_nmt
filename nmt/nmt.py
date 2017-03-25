@@ -625,7 +625,7 @@ def train(dim_word=100,  # word vector dimensionality
 
     trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost, cost_discriminator, cost_generator = build_model(tparams, model_options)
     inps = [x, x_mask, y, y_mask]
-    inps_gen_adversarial = [x, x_mask]
+    inps_gen_adversarial = [x, x_mask, y]
 
     # theano.printing.debugprint(cost.mean(), file=open('cost.txt', 'w'))
 
