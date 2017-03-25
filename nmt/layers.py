@@ -529,12 +529,12 @@ def gru_cond_layer_FR(tparams, state_below, options, prefix='gru', mask=None, co
                     W_ff_logit_lstm, b_ff_logit_lstm,
                     W_ff_nb_logit_prev, W_ff_nb_logit_ctx,
                     W_logit, b_logit, 
-                    Wxemb_proj, Wemb_proj, W_embedding):
+                    Wxemb_proj, Wemb_proj, bxemb_proj, bemb_proj, W_embedding):
 
         state_below = W_embedding[nw].reshape([n_timesteps_trg, n_samples, options['dim_word']])
 
-        x_ = tensor.dot(state_below, Wemb_proj)[0]      #  batch_size x 2 dim
-        xx_ = tensor.dot(state_below, Wxemb_proj)[0]    # batch_size x dim
+        x_ = tensor.dot(state_below, Wemb_proj)[0] + bemb_proj     #  batch_size x 2 dim
+        xx_ = tensor.dot(state_below, Wxemb_proj)[0] + bxemb_proj    # batch_size x dim
 
         preact1 = tensor.dot(h_, U) + x_
         preact1 = tensor.nnet.sigmoid(preact1)      # batch_size x 2 dim
@@ -599,6 +599,8 @@ def gru_cond_layer_FR(tparams, state_below, options, prefix='gru', mask=None, co
                    tparams[prefix_append('ff_logit', 'b')],
                    tparams[prefix_append(prefix, 'Wx')],
                    tparams[prefix_append(prefix, 'W')],
+                   tparams[prefix_append(prefix, 'bx')],
+                   tparams[prefix_append(prefix, 'b')],
                    tparams['Wemb_dec']]
 
     if one_step:
