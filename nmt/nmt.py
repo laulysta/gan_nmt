@@ -687,8 +687,8 @@ def train(dim_word=100,  # word vector dimensionality
     print 'Done'
     print 'Building f_grad...',
     f_grad = theano.function(inps, grads, profile=profile)
-    f_grad_discriminator = function(inps, grads_discriminator, profile=profile)
-    f_grad_generator = function(inps, grads_generator, profile=profile)
+    f_grad_discriminator = theano.function(inps, grads_discriminator, profile=profile)
+    f_grad_generator = theano.function(inps, grads_generator, profile=profile)
     print 'Done'
 
     # Cliping gradients
