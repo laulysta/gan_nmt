@@ -160,13 +160,13 @@ def build_discriminator_adversarial(tparams, options):
     D_orig = tensor.sum(D_orig)
     D_fake = tensor.sum(D_fake)
 
-    inps = [B_orig, B_fake]
-    outs = [D_orig, D_fake]
+    # inps = [B_orig, B_fake]
+    # outs = [D_orig, D_fake]
 
-    discriminator_adversarial = theano.function(inps, outs, name='discriminator_adversarial', profile=profile)
+    # discriminator_adversarial = theano.function(inps, outs, name='discriminator_adversarial', profile=profile)
 
-    return discriminator_adversarial
-
+    # return discriminator_adversarial
+    return D_orig, D_fake
 
 def build_adversarial_discriminator_cost(tparams, options):
     D_orig = tensor.matrix('D_orig', dtype='float32')
@@ -177,16 +177,17 @@ def build_adversarial_discriminator_cost(tparams, options):
     inps = [D_orig, D_fake]
     outs = [cost]
 
-    discriminator_adversarial_cost = theano.function(inps, outs, name='discriminator_adversarial_cost', profile=profile)
-    return discriminator_adversarial_cost
-
+    #discriminator_adversarial_cost = theano.function(inps, outs, name='discriminator_adversarial_cost', profile=profile)
+    #return discriminator_adversarial_cost
+    return cost
 
 def build_adversarial_generator_cost(tparams, options):
     D_fake = tensor.matrix('D_fake', dtype='float32')
     cost = -tensor.mean(tensor.log(D_fake))
 
-    adversarial_generator_cost = theano.function([D_fake], [cost], name='adversarial_generator_cost', profile=profile)
-    return adversarial_generator_cost
+    #adversarial_generator_cost = theano.function([D_fake], [cost], name='adversarial_generator_cost', profile=profile)
+    #return adversarial_generator_cost
+    return cost
 
 
 def build_model(tparams, options):
@@ -305,7 +306,23 @@ def build_model(tparams, options):
     cost = cost.reshape([y.shape[0], y.shape[1]])
     cost = (cost * y_mask).sum(0)
 
-    return trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost, B_teacher_forcing, B_free_running
+    # Adversarial step
+    #D_adversarial = build_discriminator_adversarial(tparams, options)
+    D_orig, D_fake = build_discriminator_adversarial(tparams, options)
+    #D_orig, D_fake = D_adversarial(B_teacher_forcing, B_free_running)
+    # inps = [B_orig, B_fake]
+    # outs = [D_orig, D_fake]
+    #copute_cost_discriminator = build_adversarial_discriminator_cost(tparams, options)
+    cost_discriminator = build_adversarial_discriminator_cost(tparams, options)
+    # inps = [D_orig, D_fake]
+    # outs = [cost]
+    #cost_discriminator = compute_cost_discriminator(D_orig, D_fake)
+
+    # compute_cost_generator = build_adversarial_generator_cost(tparams, options)
+    # cost_generator = compute_cost_generator(D_fake)
+    cost_generator = build_adversarial_generator_cost(tparams, options)
+
+    return trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost, cost_discriminator, cost_generator
 
 
 # build a sampler
@@ -606,26 +623,9 @@ def train(dim_word=100,  # word vector dimensionality
 
     tparams = init_tparams(params)
 
-    trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost, B_teacher_forcing, B_free_running = build_model(tparams, model_options)
+    trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost, cost_discriminator, cost_generator = build_model(tparams, model_options)
     inps = [x, x_mask, y, y_mask]
 
-    ###############################
-    ###############################
-    # Adversarial step
-    D_adversarial = build_discriminator_adversarial(tparams, model_options)
-
-    D_orig, D_fake = D_adversarial(B_teacher_forcing, B_free_running)
-    # inps = [B_orig, B_fake]
-    # outs = [D_orig, D_fake]
-    copute_cost_discriminator = build_adversarial_discriminator_cost(tparams, model_options)
-    # inps = [D_orig, D_fake]
-    # outs = [cost]
-    cost_discriminator = compute_cost_discriminator(D_orig, D_fake)
-
-    compute_cost_generator = build_adversarial_generator_cost(tparams, model_options)
-    cost_generator = compute_cost_generator(D_fake)
-    #########################
-    #########################
     # theano.printing.debugprint(cost.mean(), file=open('cost.txt', 'w'))
 
     print 'Buliding sampler'

@@ -211,8 +211,8 @@ def gru_layer_w_mlp(tparams, state_below, options, prefix='gru', mask=None, **kw
     U = tparams[prefix_append(prefix, 'U')]
     Ux = tparams[prefix_append(prefix, 'Ux')]
 
-    def _step_slice(m_, x_, xx_, h_, out_, U, Ux, 
-                    Wff1, bff1, Wff2, bff2, 
+    def _step_slice(m_, x_, xx_, h_, out_, U, Ux,
+                    Wff1, bff1, Wff2, bff2,
                     Wffout, bffout):
         preact = tensor.dot(h_, U) + x_
 
@@ -232,13 +232,13 @@ def gru_layer_w_mlp(tparams, state_below, options, prefix='gru', mask=None, **kw
         out = relu(tensor.dot(out, Wff2) + bff2)
         out = sigmoid(tensor.dot(out, Wff2) + bff2)
         out = tensor.log(out)
-        out = out[:,0]
+        out = out[:, 0]
 
         return h, out  #, r, u, preact, preactx
 
     seqs = [mask, state_below_, state_belowx]
     shared_vars = [tparams[prefix_append(prefix, 'U')],
-                   tparams[prefix_append(prefix, 'Ux')], 
+                   tparams[prefix_append(prefix, 'Ux')],
                    tparams[prefix_append(prefix + '_ff1', 'W')],
                    tparams[prefix_append(prefix + '_ff1', 'b')],
                    tparams[prefix_append(prefix + '_ff2', 'W')],
