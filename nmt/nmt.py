@@ -131,9 +131,11 @@ def init_params(options):
     #                                               dimctx=ctxdim)
 
     #Adversarial network
-    params = get_layer('gru_w_mlp')[0](options, params, prefix='encoder_adversarial',
+    params = get_layer('gru')[0](options, params, prefix='encoder_adversarial',
                                        nin=options['dim'] * 2, dim=options['dim'] * 2)
 
+    params = get_layer('mlp_adversarial')[0](options, params, prefix='encoder_adversarial',
+                                       nin=options['dim'] * 2, dim=options['dim'] * 2)
     return params
 
 def build_discriminator_adversarial(B_orig, B_fake, tparams, options):
@@ -154,7 +156,7 @@ def build_discriminator_adversarial(B_orig, B_fake, tparams, options):
     n_timesteps_fake = B_fake.shape[0]
 
     # RNN for adversarial network
-    encoder = get_layer(options['encoder_adversarial'])[1]
+    encoder = get_layer(options['gru'])[1]
     proj_orig = encoder(tparams, B_orig, options, prefix='encoder_adversarial')
     proj_fake = encoder(tparams, B_fake, options, prefix='encoder_adversarial')
     proj_orig = proj_orig[1]
@@ -168,6 +170,9 @@ def build_discriminator_adversarial(B_orig, B_fake, tparams, options):
     D_orig = concatenate([proj_orig[0], proj_orig_r[0][::-1]], axis=proj_orig[0].ndim - 1)
     D_fake = concatenate([proj_fake[0], proj_fake_r[0][::-1]], axis=proj_fake[0].ndim - 1)
 
+    mlp_adversarial = get_layer('mlp_adversarial')[1]
+    D_orig = mlp_adversarial(tparams, D_orig, prefix='mlp_adversarial')
+    D_fake = mlp_adversarial(tparams, D_fake, prefix='mlp_adversarial')
     D_orig = tensor.sum(D_orig)
     D_fake = tensor.sum(D_fake)
 

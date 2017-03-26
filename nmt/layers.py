@@ -12,6 +12,7 @@ layers = {'ff': ('param_init_fflayer', 'fflayer'),
           'lstm': ('param_init_lstm', 'lstm_layer'),
           'lstm_cond': ('param_init_lstm_cond', 'lstm_cond_layer'),
           'gru': ('param_init_gru', 'gru_layer'),
+          'mlp_adversarial':('param_init_mlp_adversarial', 'mlp_layer_adversarial')
           'gru_w_mlp': ('param_init_gru_w_mlp', 'gru_layer_w_mlp'),
           'gru_cond': ('param_init_gru_cond', 'gru_cond_layer'),
           'gru_cond_FR': ('param_init_gru_cond', 'gru_cond_layer_FR'), # VERIFY that param_init_gru_cond can be reused
@@ -189,6 +190,59 @@ def param_init_gru_w_mlp(options, params, prefix='gru', nin=None, dim=None, hier
     params = get_layer('ff')[0](options, params, prefix=prefix + '_ff_out', nin=options['dim'] * 2, nout=1, ortho=False)
     return params
 
+def param_init_mlp_adversarial(options, params, prefix='mlp_adversarial', nin=None, dim=None, hiero=False):
+    params = get_layer('ff')[0](options, params, prefix=prefix + '_ff1', nin=options['dim'] * 2, nout=options['dim'] * 2, ortho=False)
+    params = get_layer('ff')[0](options, params, prefix=prefix + '_ff2', nin=options['dim'] * 2, nout=options['dim'] * 2, ortho=False)
+    params = get_layer('ff')[0](options, params, prefix=prefix + '_ff_out', nin=options['dim'] * 2, nout=1, ortho=False)
+    return params
+
+def mlp_layer_adversarial(tparams, state_below, options, prefix='gru', mask=None, **kwargs):
+    nsteps = state_below.shape[0]
+    if state_below.ndim == 3:
+        n_samples = state_below.shape[1]
+    else:
+        n_samples = 1
+
+    dim = tparams[prefix_append(prefix,'Ux')].shape[1]
+
+    if mask is None:
+        mask = tensor.alloc(1., state_below.shape[0], 1)
+
+
+    def _step_slice(m_, x_, out_,
+                    Wff1, bff1, Wff2, bff2,
+                    Wffout, bffout):
+
+        out = relu(tensor.dot(h, Wff1) + bff1)
+        out = relu(tensor.dot(out, Wff2) + bff2)
+        out = sigmoid(tensor.dot(out, Wffout) + bffout)
+        out = tensor.log(out)
+        #out = out[:, 0]
+
+        return out  #, r, u, preact, preactx
+
+    seqs = [mask, state_below_]
+    shared_vars = [tparams[prefix_append(prefix + '_ff1', 'W')],
+                   tparams[prefix_append(prefix + '_ff1', 'b')],
+                   tparams[prefix_append(prefix + '_ff2', 'W')],
+                   tparams[prefix_append(prefix + '_ff2', 'b')],
+                   tparams[prefix_append(prefix + '_ff_out', 'W')],
+                   tparams[prefix_append(prefix + '_ff_out', 'b')]]
+
+    _step = _step_slice
+
+    out, updates = theano.scan(_step,
+                                sequences=seqs,
+                                outputs_info=[tensor.alloc(0., n_samples)],
+                                non_sequences=shared_vars,
+                                name=prefix_append(prefix, '_layers'),
+                                n_steps=nsteps,
+                                profile=profile,
+                                strict=True)
+
+    return out
+
+
 def gru_layer_w_mlp(tparams, state_below, options, prefix='gru', mask=None, **kwargs):
     nsteps = state_below.shape[0]
     if state_below.ndim == 3:
@@ -232,7 +286,7 @@ def gru_layer_w_mlp(tparams, state_below, options, prefix='gru', mask=None, **kw
         out = relu(tensor.dot(out, Wff2) + bff2)
         out = sigmoid(tensor.dot(out, Wffout) + bffout)
         out = tensor.log(out)
-        #out = out[:, 0]
+        out = out[:, 0]
 
         return h, out  #, r, u, preact, preactx
 
