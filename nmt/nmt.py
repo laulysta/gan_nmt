@@ -704,11 +704,13 @@ def train(dim_word=100,  # word vector dimensionality
         grads = new_grads
 
     lr = tensor.scalar(name='lr')
+    lr_discriminator = tensor.scalar(name='lr_discriminator')
+    lr_generator = tensor.scalar(name='lr_generator')
     print 'Building optimizers...',
     # f_grad_shared, f_update = eval(optimizer)(lr, tparams, grads, inps, cost)
     f_update = eval(optimizer)(lr, tparams, grads, inps, cost)
-    f_update_discriminator = eval(optimizer)(lr, tparams, grads_discriminator, inps, cost_discriminator)
-    f_update_generator = eval(optimizer)(lr, tparams, grads_generator, inps_gen_adversarial, cost_generator)
+    f_update_discriminator = eval(optimizer)(lr_discriminator, tparams, grads_discriminator, inps, cost_discriminator)
+    f_update_generator = eval(optimizer)(lr_generator, tparams, grads_generator, inps_gen_adversarial, cost_generator)
 
     #BUILD ADVERSARIAL OPTIMIZER
     # f_update_adversarial = eval(optimizer)(lr, tparams, grads_adversarial, cost_adversarial)
@@ -759,6 +761,8 @@ def train(dim_word=100,  # word vector dimensionality
             # cost = f_grad_shared(x, x_mask, y, y_mask)
             # f_update(lrate)
             cost = f_update(x, x_mask, y, y_mask, lrate)
+            cost_discriminator = f_update_discriminator(x, x_mask, y, y_mask, lrate)
+            cost_generator = f_update_generator(x, x_mask, y, y_mask, lrate)
             ud = time.time() - ud_start
 
             if numpy.isnan(cost) or numpy.isinf(cost):
