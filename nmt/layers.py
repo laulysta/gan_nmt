@@ -232,7 +232,7 @@ def gru_layer_w_mlp(tparams, state_below, options, prefix='gru', mask=None, **kw
         out = relu(tensor.dot(out, Wff2) + bff2)
         out = sigmoid(tensor.dot(out, Wffout) + bffout)
         out = tensor.log(out)
-        out = out[:, 0]
+        #out = out[:, 0]
 
         return h, out  #, r, u, preact, preactx
 
@@ -251,7 +251,7 @@ def gru_layer_w_mlp(tparams, state_below, options, prefix='gru', mask=None, **kw
     [h, out], updates = theano.scan(_step,
                                 sequences=seqs,
                                 outputs_info=[tensor.alloc(0., n_samples, dim),
-                                              tensor.alloc(0., n_samples)],
+                                              tensor.alloc(0., n_samples)[:,None]],
                                 non_sequences=shared_vars,
                                 name=prefix_append(prefix, '_layers'),
                                 n_steps=nsteps,
