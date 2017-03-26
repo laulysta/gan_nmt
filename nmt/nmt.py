@@ -707,6 +707,9 @@ def train(dim_word=100,  # word vector dimensionality
     print 'Building optimizers...',
     # f_grad_shared, f_update = eval(optimizer)(lr, tparams, grads, inps, cost)
     f_update = eval(optimizer)(lr, tparams, grads, inps, cost)
+    f_update_discriminator = eval(optimizer)(lr, tparams, grads_discriminator, inps, cost_discriminator)
+    f_update_generator = eval(optimizer)(lr, tparams, grads_generator, inps_gen_adversarial, cost_generator)
+
     #BUILD ADVERSARIAL OPTIMIZER
     # f_update_adversarial = eval(optimizer)(lr, tparams, grads_adversarial, cost_adversarial)
     print 'Done'
