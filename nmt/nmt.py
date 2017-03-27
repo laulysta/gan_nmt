@@ -614,6 +614,10 @@ def train(dim_word=100,  # word vector dimensionality
 
     model_options = copy.copy(inspect.currentframe().f_locals)
     model_options['decoder_FR'] = 'gru_cond_FR'
+<<<<<<< HEAD
+=======
+    #model_options['encoder_adversarial'] = 'gru_w_mlp'
+>>>>>>> 6b2882476e4f04bceafd904c82f6609800d0a8a1
     # model_options = locals().copy()
     if dictionary:
         word_dict, word_idict = load_dictionary(dictionary)
@@ -712,9 +716,9 @@ def train(dim_word=100,  # word vector dimensionality
     lr_generator = tensor.scalar(name='lr_generator')
     print 'Building optimizers...',
     # f_grad_shared, f_update = eval(optimizer)(lr, tparams, grads, inps, cost)
-    f_update = eval(optimizer)(lr, tparams, grads, inps, cost)
-    f_update_discriminator = eval(optimizer)(lr_discriminator, tparams, grads_discriminator, inps, cost_discriminator)
-    f_update_generator = eval(optimizer)(lr_generator, tparams, grads_generator, inps_gen_adversarial, cost_generator)
+    f_update = eval(optimizer)(lr, params_nll, grads, inps, cost)
+    f_update_discriminator = eval(optimizer)(lr_discriminator, params_adversarial, grads_discriminator, inps, cost_discriminator)
+    f_update_generator = eval(optimizer)(lr_generator, params_gen_adversarial, grads_generator, inps_gen_adversarial, cost_generator)
 
     #BUILD ADVERSARIAL OPTIMIZER
     # f_update_adversarial = eval(optimizer)(lr, tparams, grads_adversarial, cost_adversarial)

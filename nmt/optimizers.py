@@ -54,8 +54,8 @@ def adadelta(lr, tparams, grads, inp, cost):
     ru2up = [(ru2, 0.95 * ru2 + 0.05 * (ud ** 2)) for ru2, ud in zip(running_up2, updir)]
     param_up = [(p, p + ud) for p, ud in zip(itemlist(tparams), updir)]
 
-    inp += [lr]
-    f_update = theano.function(inp, cost, updates=rg2up + ru2up + param_up,
+    # inp += [lr]
+    f_update = theano.function(inp + [lr], cost, updates=rg2up + ru2up + param_up,
                                on_unused_input='ignore', profile=profile)
 
     return f_update
