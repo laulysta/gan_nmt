@@ -552,9 +552,9 @@ def gru_cond_layer_FR(tparams, state_below, options, prefix='gru', mask=None, co
         #logit_ctx = ff_nb2(tparams, ctx_, options, prefix='ff_nb_logit_ctx', activ='linear')
         logit = tensor.tanh(logit_lstm + logit_prev + logit_ctx)
         #logit = ff2(tparams, logit, options, prefix='ff_logit', activ='linear')
-        logit = linear(tensor.dot(logit, W_logit) + b_logit)
+        logit = linear(tensor.dot(logit, W_logit) + b_logit)    # n_samples x vocab_size
         nw = tensor.argmax(logit, 1)
-        return nw[:, 0]
+        return nw
 
     def compute_alphas(h1, W_comb_att, pctx_, U_att, c_tt, context_mask):
         # attention
