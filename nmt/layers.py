@@ -554,7 +554,7 @@ def gru_cond_layer_FR(tparams, state_below, options, prefix='gru', mask=None, co
         #logit = ff2(tparams, logit, options, prefix='ff_logit', activ='linear')
         logit = linear(tensor.dot(logit, W_logit) + b_logit)
         nw = tensor.argmax(logit, 1)
-        return nw[0]
+        return nw[:, 0]
 
     def compute_alphas(h1, W_comb_att, pctx_, U_att, c_tt, context_mask):
         # attention
