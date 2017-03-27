@@ -12,7 +12,7 @@ layers = {'ff': ('param_init_fflayer', 'fflayer'),
           'lstm': ('param_init_lstm', 'lstm_layer'),
           'lstm_cond': ('param_init_lstm_cond', 'lstm_cond_layer'),
           'gru': ('param_init_gru', 'gru_layer'),
-          'mlp_adversarial':('param_init_mlp_adversarial', 'mlp_layer_adversarial')
+          'mlp_adversarial':('param_init_mlp_adversarial', 'mlp_layer_adversarial'),
           'gru_w_mlp': ('param_init_gru_w_mlp', 'gru_layer_w_mlp'),
           'gru_cond': ('param_init_gru_cond', 'gru_cond_layer'),
           'gru_cond_FR': ('param_init_gru_cond', 'gru_cond_layer_FR'), # VERIFY that param_init_gru_cond can be reused
@@ -203,7 +203,7 @@ def mlp_layer_adversarial(tparams, state_below, options, prefix='gru', mask=None
     else:
         n_samples = 1
 
-    dim = tparams[prefix_append(prefix,'Ux')].shape[1]
+    #dim = tparams[prefix_append(prefix,'Ux')].shape[1]
 
     if mask is None:
         mask = tensor.alloc(1., state_below.shape[0], 1)
@@ -213,15 +213,15 @@ def mlp_layer_adversarial(tparams, state_below, options, prefix='gru', mask=None
                     Wff1, bff1, Wff2, bff2,
                     Wffout, bffout):
 
-        out = relu(tensor.dot(h, Wff1) + bff1)
+        out = relu(tensor.dot(x_, Wff1) + bff1)
         out = relu(tensor.dot(out, Wff2) + bff2)
         out = sigmoid(tensor.dot(out, Wffout) + bffout)
         out = tensor.log(out)
-        #out = out[:, 0]
+        out = out[:, 0]
 
         return out  #, r, u, preact, preactx
 
-    seqs = [mask, state_below_]
+    seqs = [mask, state_below]
     shared_vars = [tparams[prefix_append(prefix + '_ff1', 'W')],
                    tparams[prefix_append(prefix + '_ff1', 'b')],
                    tparams[prefix_append(prefix + '_ff2', 'W')],
@@ -618,10 +618,10 @@ def gru_cond_layer_FR(tparams, state_below, options, prefix='gru', mask=None, co
         preactx2 *= r2
         preactx2 += tensor.dot(ctx_, Wcx)
         # preactx2 is the new candidate pre-tanh
-        h2 = tensor.tanh(preactx2)
+        h2 = tensor.tanh(preactx2)      # batch_size x dim
         h2 = u2 * h1 + (1. - u2) * h2
 
-        nw = disconnected_grad(get_word_logits(h2, x_, ctx_,
+        nw = disconnected_grad(get_word_logits(h2, state_below, ctx_,
                                                W_ff_logit_lstm, b_ff_logit_lstm,
                                                W_ff_nb_logit_prev, W_ff_nb_logit_ctx,
                                                W_logit, b_logit))
@@ -661,7 +661,7 @@ def gru_cond_layer_FR(tparams, state_below, options, prefix='gru', mask=None, co
         [nw, h2, ctx_, alphaT, preactx2] = _step( * ([None, init_state, None, None, None, pctx_, context] + shared_vars))
     else:
         [nw, h2, ctx_, alphaT, preactx2], updates = theano.scan(_step,
-                                                             outputs_info=[tensor.alloc(0, n_samples).astype('int64'),
+                                                             outputs_info=[tensor.alloc(0, n_samples, 1).astype('int64'),
                                                                            init_state,
                                                                            tensor.alloc(0., n_samples, context.shape[2]),
                                                                            tensor.alloc(0., n_samples, context.shape[0]),
