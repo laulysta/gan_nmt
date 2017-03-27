@@ -621,7 +621,7 @@ def gru_cond_layer_FR(tparams, state_below, options, prefix='gru', mask=None, co
         h2 = tensor.tanh(preactx2)      # batch_size x dim
         h2 = u2 * h1 + (1. - u2) * h2
 
-        nw = disconnected_grad(get_word_logits(h2, state_below, ctx_,
+        nw = disconnected_grad(get_word_logits(h2, state_below[0], ctx_,
                                                W_ff_logit_lstm, b_ff_logit_lstm,
                                                W_ff_nb_logit_prev, W_ff_nb_logit_ctx,
                                                W_logit, b_logit))
