@@ -614,10 +614,7 @@ def train(dim_word=100,  # word vector dimensionality
 
     model_options = copy.copy(inspect.currentframe().f_locals)
     model_options['decoder_FR'] = 'gru_cond_FR'
-<<<<<<< HEAD
-=======
     #model_options['encoder_adversarial'] = 'gru_w_mlp'
->>>>>>> 6b2882476e4f04bceafd904c82f6609800d0a8a1
     # model_options = locals().copy()
     if dictionary:
         word_dict, word_idict = load_dictionary(dictionary)
