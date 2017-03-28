@@ -26,7 +26,7 @@ dictionary_src = '../data/small_europarl_v7_enfr_txt/vocab.fr.pkl'
 use_dropout=False
 reload_=False
 correlation_coeff=0.1
-clip_c=0.
+clip_c=1.
 
 model_options = {'dim_word':100,
                  'dim':1000,
@@ -56,4 +56,4 @@ model_options = {'dim_word':100,
                  'use_dropout':False,
                  'reload_':False,
                  'correlation_coeff':0.1,
-                 'clip_c':0.}
+                 'clip_c':1.}

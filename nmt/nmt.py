@@ -29,9 +29,10 @@ from layers import *
 from optimizers import *
 
 from theano.gradient import disconnected_grad
+from theano.compile.nanguardmode import NanGuardMode
 
 theano.config.floatX = 'float32'
-
+TINY = tensor.alloc(1e-8).astype('float32')
 # datasets: 'name', 'load_data: returns iterator', 'prepare_data: some preprocessing'
 datasets = {'wmt14enfr': (wmt14enfr.load_data, wmt14enfr.prepare_data),
             'iwslt14zhen': (iwslt14zhen.load_data, iwslt14zhen.prepare_data),
@@ -69,7 +70,23 @@ def init_params_adversarial(tparams):
 def init_params_gen_adversarial(tparams):
     disconnected_params = ['decoder_W_comb_att', 'decoder_U_att',
                             'decoder_c_tt', 'decoder_Wc_att',
-                            'decoder_b_att']
+                            'decoder_b_att', 'Wemb',
+                            'Wemb_dec',
+                            'encoder_W',
+                            'encoder_b',
+                            'encoder_U',
+                            'encoder_Wx',
+                            'encoder_Ux',
+                            'encoder_bx',
+                            'encoder_r_W',
+                            'encoder_r_b',
+                            'encoder_r_U',
+                            'encoder_r_Wx',
+                            'encoder_r_Ux',
+                            'encoder_r_bx',
+                            'ff_state_w',
+                            'ff_state_b']
+
     params_adversarial = OrderedDict()
     for kk, pp in tparams.iteritems():
         if kk not in disconnected_params and not 'ff_logit' in kk and not 'ff_nb' in kk:
@@ -132,7 +149,7 @@ def init_params(options):
 
     #Adversarial network
     params = get_layer('gru')[0](options, params, prefix='encoder_adversarial',
-                                       nin=options['dim'] * 2, dim=options['dim'] * 2)
+                                       nin=options['dim'], dim=options['dim'])
 
     params = get_layer('mlp_adversarial')[0](options, params, prefix='mlp_adversarial',
                                        nin=options['dim'] * 2, dim=options['dim'] * 2)
@@ -173,8 +190,6 @@ def build_discriminator_adversarial(B_orig, B_fake, tparams, options):
     mlp_adversarial = get_layer('mlp_adversarial')[1]
     D_orig = mlp_adversarial(tparams, D_orig, options, prefix='mlp_adversarial')
     D_fake = mlp_adversarial(tparams, D_fake, options, prefix='mlp_adversarial')
-    D_orig = tensor.sum(D_orig)
-    D_fake = tensor.sum(D_fake)
 
     # inps = [B_orig, B_fake]
     # outs = [D_orig, D_fake]
@@ -187,9 +202,9 @@ def build_discriminator_adversarial(B_orig, B_fake, tparams, options):
 def build_adversarial_discriminator_cost(D_orig, D_fake, tparams, options):
     #D_orig = tensor.matrix('D_orig', dtype='float32')
     #D_fake = tensor.matrix('D_fake', dtype='float32')
-
+    
     # Review
-    cost = -tensor.mean(D_orig * tensor.log(D_orig) + (1 - D_fake) * tensor.log(1 - D_fake))
+    cost = -tensor.mean(D_orig * tensor.log(1e-8 + D_orig) + (1. - D_fake) * tensor.log(1e-8 + 1. - D_fake))
     inps = [D_orig, D_fake]
     outs = [cost]
 
@@ -199,7 +214,7 @@ def build_adversarial_discriminator_cost(D_orig, D_fake, tparams, options):
 
 def build_adversarial_generator_cost(D_fake,tparams, options):
     #D_fake = tensor.matrix('D_fake', dtype='float32')
-    cost = -tensor.mean(tensor.log(D_fake))
+    cost = -tensor.mean(tensor.log(D_fake + 1e-8))
 
     #adversarial_generator_cost = theano.function([D_fake], [cost], name='adversarial_generator_cost', profile=profile)
     #return adversarial_generator_cost
@@ -581,6 +596,19 @@ def pred_probs(f_log_probs, prepare_data, options, iterator, verbose=True):
 
     return numpy.array(probs)
 
+def clip_gradients(clip_c, grads):
+    # Cliping gradients
+    if clip_c > 0.:
+        g2 = 0.
+        for g in grads:
+            g2 += (g**2).sum()
+        new_grads = []
+        for g in grads:
+            new_grads.append(tensor.switch(g2 > (clip_c**2),
+                                           g / tensor.sqrt(g2) * clip_c,
+                                           g))
+        return new_grads
+    return grads
 
 def train(dim_word=100,  # word vector dimensionality
           dim=1000,  # the number of LSTM units
@@ -671,9 +699,9 @@ def train(dim_word=100,  # word vector dimensionality
 
     # after any regularizer
     print 'Building f_cost...',
-    f_cost = theano.function(inps, cost, profile=profile)
-    f_cost_discriminator = theano.function(inps, cost_discriminator, profile=profile)
-    f_cost_generator = theano.function(inps_gen_adversarial, cost_generator, profile=profile)
+    f_cost = theano.function(inps, cost, profile=profile, mode=NanGuardMode(nan_is_error=True, inf_is_error=True, big_is_error=True))
+    f_cost_discriminator = theano.function(inps, cost_discriminator, profile=profile, mode=NanGuardMode(nan_is_error=True, inf_is_error=True, big_is_error=True))
+    f_cost_generator = theano.function(inps_gen_adversarial, cost_generator, profile=profile, mode=NanGuardMode(nan_is_error=True, inf_is_error=True, big_is_error=True))
     print 'Done'
 
     if model_options['hiero'] is not None:
@@ -690,23 +718,15 @@ def train(dim_word=100,  # word vector dimensionality
     grads_discriminator = tensor.grad(cost_discriminator, wrt=itemlist(params_adversarial))
     grads_generator = tensor.grad(cost_generator, wrt=itemlist(params_gen_adversarial))
     print 'Done'
-    print 'Building f_grad...',
-    f_grad = theano.function(inps, grads, profile=profile)
-    f_grad_discriminator = theano.function(inps, grads_discriminator, profile=profile)
-    f_grad_generator = theano.function(inps_gen_adversarial, grads_generator, profile=profile)
-    print 'Done'
-
-    # Cliping gradients
-    if clip_c > 0.:
-        g2 = 0.
-        for g in grads:
-            g2 += (g**2).sum()
-        new_grads = []
-        for g in grads:
-            new_grads.append(tensor.switch(g2 > (clip_c**2),
-                                           g / tensor.sqrt(g2) * clip_c,
-                                           g))
-        grads = new_grads
+    #print 'Building f_grad...',
+    f_grad = theano.function(inps, grads, profile=profile, mode=NanGuardMode(nan_is_error=True, inf_is_error=True, big_is_error=True))
+    f_grad_discriminator = theano.function(inps, grads_discriminator, profile=profile, mode=NanGuardMode(nan_is_error=True, inf_is_error=True, big_is_error=True))
+    f_grad_generator = theano.function(inps_gen_adversarial, grads_generator, profile=profile, mode=NanGuardMode(nan_is_error=True, inf_is_error=True, big_is_error=True))
+    #print 'Done'
+    print('clip_c: {}'.format(clip_c))
+    grads = clip_gradients(clip_c, grads)
+    grads_discriminator = clip_gradients(clip_c, grads_discriminator)
+    grads_generator = clip_gradients(clip_c, grads_generator)
 
     lr = tensor.scalar(name='lr')
     lr_discriminator = tensor.scalar(name='lr_discriminator')
@@ -757,25 +777,46 @@ def train(dim_word=100,  # word vector dimensionality
             x, x_mask, y, y_mask = prepare_data(x, y, maxlen=maxlen,
                                                 n_words_src=n_words_src, n_words=n_words)
 
-            if x is None:
-                # print 'Minibatch with zero sample under length ', maxlen
-                uidx -= 1
-                continue
+            #if x is None:
+            #    # print 'Minibatch with zero sample under length ', maxlen
+            #    uidx -= 1
+            #    continue
 
             ud_start = time.time()
             # cost = f_grad_shared(x, x_mask, y, y_mask)
             # f_update(lrate)
+            c = f_cost(x, x_mask, y, y_mask)
+            cd = f_cost_discriminator(x, x_mask, y, y_mask)
+            cg = f_cost_generator(x, x_mask, y)
+            print c
+            print cd
+            print cg
+
+            g = f_grad(x, x_mask, y, y_mask)
+            gd = f_grad_discriminator(x, x_mask, y, y_mask)
+            gg = f_grad_generator(x, x_mask, y)
+            print numpy.array([numpy.isnan(a).sum() for a in g]).sum() + numpy.array([numpy.isnan(a).sum() for a in gd]).sum() + numpy.array([numpy.isnan(a).sum() for a in gg]).sum()
+            print numpy.array([numpy.isinf(a).sum() for a in g]).sum() + numpy.array([numpy.isinf(a).sum() for a in gd]).sum() + numpy.array([numpy.isinf(a).sum() for a in gg]).sum()
+
+
             cost = f_update(x, x_mask, y, y_mask, lrate)
-            cost_discriminator = f_update_discriminator(x, x_mask, y, y_mask, lrate)
-            cost_generator = f_update_generator(x, x_mask, y, y_mask, lrate)
+            cost_discriminator = f_update_discriminator(x, x_mask, y, y_mask, lrate/100.)
+            cost_generator = f_update_generator(x, x_mask, y, lrate/100.)
             ud = time.time() - ud_start
 
             if numpy.isnan(cost) or numpy.isinf(cost):
-                print 'NaN detected'
-                return 1., 1., 1.
+                if numpy.isinf(cost):
+                    print 'inf detected'
+                else:
+                    print 'NaN detected'
+
+                print(uidx)
+                break
+                #return 1., 1., 1.
 
             if numpy.mod(uidx, dispFreq) == 0:
                 print 'Epoch ', eidx, 'Update ', uidx, 'Cost ', cost, 'UD ', ud
+                print 'Cost Discriminator: {}, Cost Generator: {}'.format(cost_discriminator, cost_generator)
 
             if numpy.mod(uidx, saveFreq) == 0:
                 print 'Saving...',
@@ -918,7 +959,7 @@ if __name__ == '__main__':
           hiero=None,
           patience=10,
           max_epochs=5,
-          dispFreq=100,
+          dispFreq=1,
           decay_c=0.,
           alpha_c=0.,
           diag_c=0.,

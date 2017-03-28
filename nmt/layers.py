@@ -216,7 +216,7 @@ def mlp_layer_adversarial(tparams, state_below, options, prefix='gru', mask=None
         out = relu(tensor.dot(x_, Wff1) + bff1)
         out = relu(tensor.dot(out, Wff2) + bff2)
         out = sigmoid(tensor.dot(out, Wffout) + bffout)
-        out = tensor.log(out)
+        #out = tensor.log(out)
         out = out[:, 0]
 
         return out  #, r, u, preact, preactx

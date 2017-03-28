@@ -2,6 +2,7 @@ import theano
 import theano.tensor as tensor
 import numpy
 from utils import *
+from theano.compile.nanguardmode import NanGuardMode
 
 
 # optimizers
@@ -56,7 +57,8 @@ def adadelta(lr, tparams, grads, inp, cost):
 
     # inp += [lr]
     f_update = theano.function(inp + [lr], cost, updates=rg2up + ru2up + param_up,
-                               on_unused_input='ignore', profile=profile)
+                               on_unused_input='ignore', profile=profile,
+                               mode=NanGuardMode(nan_is_error=True, inf_is_error=True, big_is_error=False))
 
     return f_update
 
