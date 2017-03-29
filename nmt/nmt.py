@@ -607,7 +607,12 @@ def clip_gradients(clip_c, grads):
             new_grads.append(tensor.switch(g2 > (clip_c**2),
                                            g / tensor.sqrt(g2) * clip_c,
                                            g))
-        return new_grads
+        new_grads_2 = []    
+        for g in new_grads:
+            new_grads_2.append(tensor.switch(g < (g * 0. + 1e-8),
+                               g * 0., g))
+
+        return new_grads_2
     return grads
 
 def train(dim_word=100,  # word vector dimensionality
@@ -777,14 +782,15 @@ def train(dim_word=100,  # word vector dimensionality
             x, x_mask, y, y_mask = prepare_data(x, y, maxlen=maxlen,
                                                 n_words_src=n_words_src, n_words=n_words)
 
-            #if x is None:
-            #    # print 'Minibatch with zero sample under length ', maxlen
-            #    uidx -= 1
-            #    continue
+            if x is None:
+                # print 'Minibatch with zero sample under length ', maxlen
+                uidx -= 1
+                continue
 
             ud_start = time.time()
             # cost = f_grad_shared(x, x_mask, y, y_mask)
             # f_update(lrate)
+            '''
             c = f_cost(x, x_mask, y, y_mask)
             cd = f_cost_discriminator(x, x_mask, y, y_mask)
             cg = f_cost_generator(x, x_mask, y)
@@ -797,7 +803,7 @@ def train(dim_word=100,  # word vector dimensionality
             gg = f_grad_generator(x, x_mask, y)
             print numpy.array([numpy.isnan(a).sum() for a in g]).sum() + numpy.array([numpy.isnan(a).sum() for a in gd]).sum() + numpy.array([numpy.isnan(a).sum() for a in gg]).sum()
             print numpy.array([numpy.isinf(a).sum() for a in g]).sum() + numpy.array([numpy.isinf(a).sum() for a in gd]).sum() + numpy.array([numpy.isinf(a).sum() for a in gg]).sum()
-
+            '''
 
             cost = f_update(x, x_mask, y, y_mask, lrate)
             cost_discriminator = f_update_discriminator(x, x_mask, y, y_mask, lrate/100.)
@@ -959,7 +965,7 @@ if __name__ == '__main__':
           hiero=None,
           patience=10,
           max_epochs=5,
-          dispFreq=1,
+          dispFreq=100,
           decay_c=0.,
           alpha_c=0.,
           diag_c=0.,
