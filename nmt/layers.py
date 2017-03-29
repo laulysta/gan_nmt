@@ -196,6 +196,22 @@ def param_init_mlp_adversarial(options, params, prefix='mlp_adversarial', nin=No
     params = get_layer('ff')[0](options, params, prefix=prefix + '_ff_out', nin=options['dim'] * 2, nout=1, ortho=False)
     return params
 
+def mlp_layer(tparams, state_below, options, prefix='gru', mask=None, **kwargs):
+    Wff1 = tparams[prefix_append(prefix + '_ff1', 'W')]
+    bff1 = tparams[prefix_append(prefix + '_ff1', 'b')]
+    out = relu(tensor.dot(state_below, Wff1) + bff1)
+
+    Wff2 = tparams[prefix_append(prefix + '_ff2', 'W')]
+    bff2 = tparams[prefix_append(prefix + '_ff2', 'b')]
+    out = tanh(tensor.dot(out, Wff2) + bff2)
+
+    Wffout = tparams[prefix_append(prefix + '_ff_out', 'W')]
+    bffout = tparams[prefix_append(prefix + '_ff_out', 'b')]
+    out = sigmoid(tensor.dot(out, Wffout) + bffout)
+
+    return out
+
+
 def mlp_layer_adversarial(tparams, state_below, options, prefix='gru', mask=None, **kwargs):
     nsteps = state_below.shape[0]
     if state_below.ndim == 3:

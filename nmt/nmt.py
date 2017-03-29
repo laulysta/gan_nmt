@@ -185,12 +185,16 @@ def build_discriminator_adversarial(B_orig, B_fake, tparams, options):
     proj_orig_r = proj_orig_r[0]
     proj_fake_r = proj_fake_r[0]
 
+    ctx_mean_orig = concatenate([proj_orig[-1], proj_orig_r[-1]], axis=proj_orig[0].ndim - 2)
+    ctx_mean_fake = concatenate([proj_fake[-1], proj_fake_r[-1]], axis=proj_orig[0].ndim - 2)
+
     D_orig = concatenate([proj_orig, proj_orig_r[::-1]], axis=proj_orig.ndim - 1)
     D_fake = concatenate([proj_fake, proj_fake_r[::-1]], axis=proj_fake.ndim - 1)
+    #D_orig =
 
-    mlp_adversarial = get_layer('mlp_adversarial')[1]
-    D_orig = mlp_adversarial(tparams, D_orig, options, prefix='mlp_adversarial')
-    D_fake = mlp_adversarial(tparams, D_fake, options, prefix='mlp_adversarial')
+    #mlp_adversarial = get_layer('mlp_adversarial')[1]
+    D_orig = mlp_layer(tparams, D_orig, options, prefix='mlp_adversarial')
+    D_fake = mlp_layer(tparams, D_fake, options, prefix='mlp_adversarial')
 
     # inps = [B_orig, B_fake]
     # outs = [D_orig, D_fake]
@@ -205,7 +209,7 @@ def build_adversarial_discriminator_cost(D_orig, D_fake, tparams, options):
     #D_fake = tensor.matrix('D_fake', dtype='float32')
     
     # Review
-    cost = -tensor.mean(D_orig * tensor.log(1e-6 + D_orig) + (1. - D_fake) * tensor.log(1e-6 + 1. - D_fake))
+    cost = -tensor.mean(tensor.log(1e-6 + D_orig) + tensor.log(1e-6 + 1. - D_fake))
     inps = [D_orig, D_fake]
     outs = [cost]
 
@@ -791,7 +795,7 @@ def train(dim_word=100,  # word vector dimensionality
             #    continue
 
             ud_start = time.time()
-            
+            '''
             c = f_cost(x, x_mask, y, y_mask)
             cd = f_cost_discriminator(x, x_mask, y, y_mask)
             cg = f_cost_generator(x, x_mask, y)
@@ -804,7 +808,7 @@ def train(dim_word=100,  # word vector dimensionality
             gg = f_grad_generator(x, x_mask, y)
             print numpy.array([numpy.isnan(a).sum() for a in g]).sum() + numpy.array([numpy.isnan(a).sum() for a in gd]).sum() + numpy.array([numpy.isnan(a).sum() for a in gg]).sum()
             print numpy.array([numpy.isinf(a).sum() for a in g]).sum() + numpy.array([numpy.isinf(a).sum() for a in gd]).sum() + numpy.array([numpy.isinf(a).sum() for a in gg]).sum()
-
+            '''
 
             cost = f_update(x, x_mask, y, y_mask, lrate)
             cost_discriminator = f_update_discriminator(x, x_mask, y, y_mask, lrate)
