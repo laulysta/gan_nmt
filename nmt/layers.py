@@ -213,8 +213,8 @@ def mlp_layer_adversarial(tparams, state_below, options, prefix='gru', mask=None
                     Wff1, bff1, Wff2, bff2,
                     Wffout, bffout):
 
-        out = relu(tensor.dot(x_, Wff1) + bff1)
-        out = relu(tensor.dot(out, Wff2) + bff2)
+        out = tanh(tensor.dot(x_, Wff1) + bff1)
+        out = tanh(tensor.dot(out, Wff2) + bff2)
         out = sigmoid(tensor.dot(out, Wffout) + bffout)
         #out = tensor.log(out)
         out = out[:, 0]
@@ -241,78 +241,6 @@ def mlp_layer_adversarial(tparams, state_below, options, prefix='gru', mask=None
                                 strict=True)
 
     return out
-
-
-def gru_layer_w_mlp(tparams, state_below, options, prefix='gru', mask=None, **kwargs):
-    nsteps = state_below.shape[0]
-    if state_below.ndim == 3:
-        n_samples = state_below.shape[1]
-    else:
-        n_samples = 1
-
-    dim = tparams[prefix_append(prefix,'Ux')].shape[1]
-
-    if mask is None:
-        mask = tensor.alloc(1., state_below.shape[0], 1)
-
-    def _slice(_x, n, dim):
-        if _x.ndim == 3:
-            return _x[:, :, n*dim:(n+1)*dim]
-        return _x[:, n*dim:(n+1)*dim]
-
-    state_below_ = tensor.dot(state_below, tparams[prefix_append(prefix, 'W')]) + tparams[prefix_append(prefix, 'b')]
-    state_belowx = tensor.dot(state_below, tparams[prefix_append(prefix, 'Wx')]) + tparams[prefix_append(prefix, 'bx')]
-    U = tparams[prefix_append(prefix, 'U')]
-    Ux = tparams[prefix_append(prefix, 'Ux')]
-
-    def _step_slice(m_, x_, xx_, h_, out_, U, Ux,
-                    Wff1, bff1, Wff2, bff2,
-                    Wffout, bffout):
-        preact = tensor.dot(h_, U) + x_
-
-        r = tensor.nnet.sigmoid(_slice(preact, 0, dim))
-        u = tensor.nnet.sigmoid(_slice(preact, 1, dim))
-
-        preactx = tensor.dot(h_, Ux)
-        preactx = preactx * r
-        preactx = preactx + xx_
-
-        h = tensor.tanh(preactx)
-
-        h = u * h_ + (1. - u) * h
-        h = m_[:, None] * h + (1. - m_)[:, None] * h_
-
-        out = relu(tensor.dot(h, Wff1) + bff1)
-        out = relu(tensor.dot(out, Wff2) + bff2)
-        out = sigmoid(tensor.dot(out, Wffout) + bffout)
-        out = tensor.log(out)
-        out = out[:, 0]
-
-        return h, out  #, r, u, preact, preactx
-
-    seqs = [mask, state_below_, state_belowx]
-    shared_vars = [tparams[prefix_append(prefix, 'U')],
-                   tparams[prefix_append(prefix, 'Ux')],
-                   tparams[prefix_append(prefix + '_ff1', 'W')],
-                   tparams[prefix_append(prefix + '_ff1', 'b')],
-                   tparams[prefix_append(prefix + '_ff2', 'W')],
-                   tparams[prefix_append(prefix + '_ff2', 'b')],
-                   tparams[prefix_append(prefix + '_ff_out', 'W')],
-                   tparams[prefix_append(prefix + '_ff_out', 'b')]]
-
-    _step = _step_slice
-
-    [h, out], updates = theano.scan(_step,
-                                sequences=seqs,
-                                outputs_info=[tensor.alloc(0., n_samples, dim),
-                                              tensor.alloc(0., n_samples)],
-                                non_sequences=shared_vars,
-                                name=prefix_append(prefix, '_layers'),
-                                n_steps=nsteps,
-                                profile=profile,
-                                strict=True)
-
-    return [h, out]
 
 # Conditional GRU layer with Attention
 def param_init_gru_cond(options, params, prefix='gru_cond', nin=None, dim=None, dimctx=None):
@@ -847,6 +775,78 @@ def gru_cond_simple_layer(tparams, state_below, options, prefix='gru', mask=None
                                     profile=profile,
                                     strict=True)
     return rval
+
+
+def gru_layer_w_mlp(tparams, state_below, options, prefix='gru', mask=None, **kwargs):
+    nsteps = state_below.shape[0]
+    if state_below.ndim == 3:
+        n_samples = state_below.shape[1]
+    else:
+        n_samples = 1
+
+    dim = tparams[prefix_append(prefix,'Ux')].shape[1]
+
+    if mask is None:
+        mask = tensor.alloc(1., state_below.shape[0], 1)
+
+    def _slice(_x, n, dim):
+        if _x.ndim == 3:
+            return _x[:, :, n*dim:(n+1)*dim]
+        return _x[:, n*dim:(n+1)*dim]
+
+    state_below_ = tensor.dot(state_below, tparams[prefix_append(prefix, 'W')]) + tparams[prefix_append(prefix, 'b')]
+    state_belowx = tensor.dot(state_below, tparams[prefix_append(prefix, 'Wx')]) + tparams[prefix_append(prefix, 'bx')]
+    U = tparams[prefix_append(prefix, 'U')]
+    Ux = tparams[prefix_append(prefix, 'Ux')]
+
+    def _step_slice(m_, x_, xx_, h_, out_, U, Ux,
+                    Wff1, bff1, Wff2, bff2,
+                    Wffout, bffout):
+        preact = tensor.dot(h_, U) + x_
+
+        r = tensor.nnet.sigmoid(_slice(preact, 0, dim))
+        u = tensor.nnet.sigmoid(_slice(preact, 1, dim))
+
+        preactx = tensor.dot(h_, Ux)
+        preactx = preactx * r
+        preactx = preactx + xx_
+
+        h = tensor.tanh(preactx)
+
+        h = u * h_ + (1. - u) * h
+        h = m_[:, None] * h + (1. - m_)[:, None] * h_
+
+        out = relu(tensor.dot(h, Wff1) + bff1)
+        out = relu(tensor.dot(out, Wff2) + bff2)
+        out = sigmoid(tensor.dot(out, Wffout) + bffout)
+        out = tensor.log(out)
+        out = out[:, 0]
+
+        return h, out  #, r, u, preact, preactx
+
+    seqs = [mask, state_below_, state_belowx]
+    shared_vars = [tparams[prefix_append(prefix, 'U')],
+                   tparams[prefix_append(prefix, 'Ux')],
+                   tparams[prefix_append(prefix + '_ff1', 'W')],
+                   tparams[prefix_append(prefix + '_ff1', 'b')],
+                   tparams[prefix_append(prefix + '_ff2', 'W')],
+                   tparams[prefix_append(prefix + '_ff2', 'b')],
+                   tparams[prefix_append(prefix + '_ff_out', 'W')],
+                   tparams[prefix_append(prefix + '_ff_out', 'b')]]
+
+    _step = _step_slice
+
+    [h, out], updates = theano.scan(_step,
+                                sequences=seqs,
+                                outputs_info=[tensor.alloc(0., n_samples, dim),
+                                              tensor.alloc(0., n_samples)],
+                                non_sequences=shared_vars,
+                                name=prefix_append(prefix, '_layers'),
+                                n_steps=nsteps,
+                                profile=profile,
+                                strict=True)
+
+    return [h, out]
 
 
 # Conditional LSTM layer with Attention

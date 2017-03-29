@@ -42,6 +42,7 @@ def adam(lr, tparams, grads, inp, cost):
 
     return f_grad_shared, f_update
 
+
 def adadelta(lr, tparams, grads, inp, cost):
     running_up2 = [theano.shared(p.get_value() * numpy.float32(0.),
                                  name='%s_rup2' % k) for k, p in tparams.iteritems()]

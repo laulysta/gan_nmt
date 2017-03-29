@@ -32,7 +32,8 @@ from theano.gradient import disconnected_grad
 from theano.compile.nanguardmode import NanGuardMode
 
 theano.config.floatX = 'float32'
-TINY = tensor.alloc(1e-8).astype('float32')
+TINY = tensor.alloc(1e-6).astype('float32')
+#theano.config.dnn.enabled = False
 # datasets: 'name', 'load_data: returns iterator', 'prepare_data: some preprocessing'
 datasets = {'wmt14enfr': (wmt14enfr.load_data, wmt14enfr.prepare_data),
             'iwslt14zhen': (iwslt14zhen.load_data, iwslt14zhen.prepare_data),
@@ -204,7 +205,7 @@ def build_adversarial_discriminator_cost(D_orig, D_fake, tparams, options):
     #D_fake = tensor.matrix('D_fake', dtype='float32')
     
     # Review
-    cost = -tensor.mean(D_orig * tensor.log(1e-8 + D_orig) + (1. - D_fake) * tensor.log(1e-8 + 1. - D_fake))
+    cost = -tensor.mean(D_orig * tensor.log(1e-6 + D_orig) + (1. - D_fake) * tensor.log(1e-6 + 1. - D_fake))
     inps = [D_orig, D_fake]
     outs = [cost]
 
@@ -344,7 +345,7 @@ def build_model(tparams, options):
     # inps = [B_orig, B_fake]
     # outs = [D_orig, D_fake]
     #copute_cost_discriminator = build_adversarial_discriminator_cost(tparams, options)
-    cost_discriminator = build_adversarial_discriminator_cost(D_orig, D_fake,tparams, options)
+    cost_discriminator = build_adversarial_discriminator_cost(D_orig, D_fake, tparams, options)
     # inps = [D_orig, D_fake]
     # outs = [cost]
     #cost_discriminator = compute_cost_discriminator(D_orig, D_fake)
@@ -353,7 +354,7 @@ def build_model(tparams, options):
     # cost_generator = compute_cost_generator(D_fake)
     cost_generator = build_adversarial_generator_cost(D_fake,tparams, options)
 
-    return trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost, cost_discriminator, cost_generator
+    return trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost, cost_discriminator, cost_generator, B_teacher_forcing, B_free_running, D_orig, D_fake
 
 
 # build a sampler
@@ -607,12 +608,12 @@ def clip_gradients(clip_c, grads):
             new_grads.append(tensor.switch(g2 > (clip_c**2),
                                            g / tensor.sqrt(g2) * clip_c,
                                            g))
-        new_grads_2 = []    
-        for g in new_grads:
-            new_grads_2.append(tensor.switch(g < (g * 0. + 1e-8),
-                               g * 0., g))
+        #new_grads_2 = []    
+        #for g in new_grads:
+        #    new_grads_2.append(tensor.switch(g < (g * 0. + 1e-8),
+        #                       g * 0., g))
 
-        return new_grads_2
+        return new_grads
     return grads
 
 def train(dim_word=100,  # word vector dimensionality
@@ -672,10 +673,12 @@ def train(dim_word=100,  # word vector dimensionality
 
     tparams = init_tparams(params)
 
-    trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost, cost_discriminator, cost_generator = build_model(tparams, model_options)
+    trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost, cost_discriminator, cost_generator, B_tf, B_fr, D_o, D_f = build_model(tparams, model_options)
     inps = [x, x_mask, y, y_mask]
     inps_gen_adversarial = [x, x_mask, y]
 
+    f_B = theano.function(inps, [B_tf, B_fr])
+    f_D = theano.function(inps, [D_o, D_f])
     # theano.printing.debugprint(cost.mean(), file=open('cost.txt', 'w'))
 
     print 'Buliding sampler'
@@ -783,14 +786,12 @@ def train(dim_word=100,  # word vector dimensionality
                                                 n_words_src=n_words_src, n_words=n_words)
 
             if x is None:
-                # print 'Minibatch with zero sample under length ', maxlen
+                print 'Minibatch with zero sample under length ', maxlen
                 uidx -= 1
-                continue
+            #    continue
 
             ud_start = time.time()
-            # cost = f_grad_shared(x, x_mask, y, y_mask)
-            # f_update(lrate)
-            '''
+            
             c = f_cost(x, x_mask, y, y_mask)
             cd = f_cost_discriminator(x, x_mask, y, y_mask)
             cg = f_cost_generator(x, x_mask, y)
@@ -803,11 +804,11 @@ def train(dim_word=100,  # word vector dimensionality
             gg = f_grad_generator(x, x_mask, y)
             print numpy.array([numpy.isnan(a).sum() for a in g]).sum() + numpy.array([numpy.isnan(a).sum() for a in gd]).sum() + numpy.array([numpy.isnan(a).sum() for a in gg]).sum()
             print numpy.array([numpy.isinf(a).sum() for a in g]).sum() + numpy.array([numpy.isinf(a).sum() for a in gd]).sum() + numpy.array([numpy.isinf(a).sum() for a in gg]).sum()
-            '''
+
 
             cost = f_update(x, x_mask, y, y_mask, lrate)
-            cost_discriminator = f_update_discriminator(x, x_mask, y, y_mask, lrate/100.)
-            cost_generator = f_update_generator(x, x_mask, y, lrate/100.)
+            cost_discriminator = f_update_discriminator(x, x_mask, y, y_mask, lrate)
+            cost_generator = f_update_generator(x, x_mask, y, lrate)
             ud = time.time() - ud_start
 
             if numpy.isnan(cost) or numpy.isinf(cost):
