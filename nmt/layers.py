@@ -203,7 +203,7 @@ def mlp_layer(tparams, state_below, options, prefix='gru', mask=None, **kwargs):
 
     Wff2 = tparams[prefix_append(prefix + '_ff2', 'W')]
     bff2 = tparams[prefix_append(prefix + '_ff2', 'b')]
-    out = tanh(tensor.dot(out, Wff2) + bff2)
+    out = relu(tensor.dot(out, Wff2) + bff2)
 
     Wffout = tparams[prefix_append(prefix + '_ff_out', 'W')]
     bffout = tparams[prefix_append(prefix + '_ff_out', 'b')]
