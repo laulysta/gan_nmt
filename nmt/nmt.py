@@ -91,7 +91,8 @@ def init_params_gen_adversarial(tparams):
     params_adversarial = OrderedDict()
     for kk, pp in tparams.iteritems():
         if kk not in disconnected_params and not 'ff_logit' in kk and not 'ff_nb' in kk:
-            params_adversarial[kk] = tparams[kk]
+            if not 'adversarial' in kk:
+                params_adversarial[kk] = tparams[kk]
     return params_adversarial
 
 # load parameters
@@ -185,17 +186,17 @@ def build_discriminator_adversarial(B_orig, B_fake, tparams, options):
     proj_orig_r = proj_orig_r[0]
     proj_fake_r = proj_fake_r[0]
 
-    ctx_mean_orig = concatenate([proj_orig[-1], proj_orig_r[-1]], axis=proj_orig[0].ndim - 2)
-    ctx_mean_fake = concatenate([proj_fake[-1], proj_fake_r[-1]], axis=proj_orig[0].ndim - 2)
+    ctx_mean_orig = concatenate([proj_orig[-1], proj_orig_r[-1]], axis=proj_orig.ndim - 2)
+    ctx_mean_fake = concatenate([proj_fake[-1], proj_fake_r[-1]], axis=proj_orig.ndim - 2)
 
     D_orig = concatenate([proj_orig, proj_orig_r[::-1]], axis=proj_orig.ndim - 1)
     D_fake = concatenate([proj_fake, proj_fake_r[::-1]], axis=proj_fake.ndim - 1)
     #D_orig =
 
     #mlp_adversarial = get_layer('mlp_adversarial')[1]
-    D_orig = mlp_layer_adversarial(tparams, D_orig, options, prefix='mlp_adversarial')
-    D_orig = sigmoid
-    D_fake = mlp_layer_adversarial(tparams, D_fake, options, prefix='mlp_adversarial')
+
+    D_orig = mlp_layer(tparams, ctx_mean_orig, options, prefix='mlp_adversarial')
+    D_fake = mlp_layer(tparams, ctx_mean_fake, options, prefix='mlp_adversarial')
 
     # inps = [B_orig, B_fake]
     # outs = [D_orig, D_fake]
@@ -802,7 +803,7 @@ def train(dim_word=100,  # word vector dimensionality
             cg = f_cost_generator(x, x_mask, y)
             print c
             print cd
-            print cg
+                print cg
 
             g = f_grad(x, x_mask, y, y_mask)
             gd = f_grad_discriminator(x, x_mask, y, y_mask)
@@ -812,8 +813,12 @@ def train(dim_word=100,  # word vector dimensionality
             '''
 
             cost = f_update(x, x_mask, y, y_mask, lrate)
-            cost_discriminator = f_update_discriminator(x, x_mask, y, y_mask, lrate)
-            cost_generator = f_update_generator(x, x_mask, y, lrate)
+            D_orig, D_fake = f_D(x, x_mask, y, y_mask)
+            discriminator_accuracy = (D_fake > 0.5).sum() / (1.0*D_fake.size)
+            if discriminator_accuracy < 0.95:
+                cost_discriminator = f_update_discriminator(x, x_mask, y, y_mask, lrate)
+            if discriminator_accuracy > 0.75:
+                cost_generator = f_update_generator(x, x_mask, y, lrate)
             ud = time.time() - ud_start
 
             if numpy.isnan(cost) or numpy.isinf(cost):
@@ -829,6 +834,7 @@ def train(dim_word=100,  # word vector dimensionality
             if numpy.mod(uidx, dispFreq) == 0:
                 print 'Epoch ', eidx, 'Update ', uidx, 'Cost ', cost, 'UD ', ud
                 print 'Cost Discriminator: {}, Cost Generator: {}'.format(cost_discriminator, cost_generator)
+                print 'Accuracy discriminator: {}'.format(discriminator_accuracy)
 
             if numpy.mod(uidx, saveFreq) == 0:
                 print 'Saving...',
@@ -971,7 +977,7 @@ if __name__ == '__main__':
           hiero=None,
           patience=10,
           max_epochs=5,
-          dispFreq=100,
+          dispFreq=10,
           decay_c=0.,
           alpha_c=0.,
           diag_c=0.,
@@ -980,8 +986,8 @@ if __name__ == '__main__':
           n_words=100000,
           maxlen=100,
           optimizer='adadelta',
-          batch_size=16,
-          valid_batch_size=16,
+          batch_size=32,
+          valid_batch_size=32,
           saveto='saved_models/model.npz',
           validFreq=1000,
           saveFreq=1000,
