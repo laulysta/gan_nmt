@@ -669,7 +669,8 @@ def train(dim_word=100,  # word vector dimensionality
     # reload options
     if reload_:
         with open('{}.npz.pkl'.format(reload_), 'rb') as f:
-            model_options = pkl.load(f)
+            saved_options = pkl.load(f)
+            model_options.update(saved_options)
 
     print 'Building model'
     params = init_params(model_options)
