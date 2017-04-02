@@ -814,7 +814,8 @@ def train(dim_word=100,  # word vector dimensionality
 
             cost = f_update(x, x_mask, y, y_mask, lrate)
             D_orig, D_fake = f_D(x, x_mask, y, y_mask)
-            discriminator_accuracy = (D_fake > 0.5).sum() / (1.0*D_fake.size)
+            discriminator_accuracy = ((D_fake < 0.5).sum() + (D_orig > 0.5).sum()) / (1.0 * (D_fake.size + D_orig.size))
+
             if discriminator_accuracy < 0.95:
                 cost_discriminator = f_update_discriminator(x, x_mask, y, y_mask, lrate)
             if discriminator_accuracy > 0.75:
