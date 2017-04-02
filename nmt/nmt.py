@@ -193,8 +193,9 @@ def build_discriminator_adversarial(B_orig, B_fake, tparams, options):
     #D_orig =
 
     #mlp_adversarial = get_layer('mlp_adversarial')[1]
-    D_orig = mlp_layer(tparams, D_orig, options, prefix='mlp_adversarial')
-    D_fake = mlp_layer(tparams, D_fake, options, prefix='mlp_adversarial')
+    D_orig = mlp_layer_adversarial(tparams, D_orig, options, prefix='mlp_adversarial')
+    D_orig = sigmoid
+    D_fake = mlp_layer_adversarial(tparams, D_fake, options, prefix='mlp_adversarial')
 
     # inps = [B_orig, B_fake]
     # outs = [D_orig, D_fake]
@@ -209,7 +210,7 @@ def build_adversarial_discriminator_cost(D_orig, D_fake, tparams, options):
     #D_fake = tensor.matrix('D_fake', dtype='float32')
     
     # Review
-    cost = -tensor.mean(tensor.log(1e-6 + D_orig) + tensor.log(1e-6 + 1. - D_fake))
+    cost = -tensor.mean(tensor.log(1e-6 + tensor.sum(D_orig)) + tensor.log(1e-6 + 1. - tensor.sum(D_fake)))
     inps = [D_orig, D_fake]
     outs = [cost]
 
@@ -989,6 +990,6 @@ if __name__ == '__main__':
           dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
           dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
           use_dropout=False,
-          reload_=False,
+          reload_='./saved_models/epoch9_nbUpd300000_model',
           correlation_coeff=0.1,
           clip_c=1.)
