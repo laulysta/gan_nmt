@@ -714,9 +714,13 @@ def train(dim_word=100,  # word vector dimensionality
 
     # after any regularizer
     print 'Building f_cost...',
-    f_cost = theano.function(inps, cost, profile=profile, mode=NanGuardMode(nan_is_error=True, inf_is_error=True, big_is_error=True))
-    f_cost_discriminator = theano.function(inps, cost_discriminator, profile=profile, mode=NanGuardMode(nan_is_error=True, inf_is_error=True, big_is_error=True))
-    f_cost_generator = theano.function(inps_gen_adversarial, cost_generator, profile=profile, mode=NanGuardMode(nan_is_error=True, inf_is_error=True, big_is_error=True))
+    #f_cost = theano.function(inps, cost, profile=profile, mode=NanGuardMode(nan_is_error=True, inf_is_error=True, big_is_error=True))
+    #f_cost_discriminator = theano.function(inps, cost_discriminator, profile=profile, mode=NanGuardMode(nan_is_error=True, inf_is_error=True, big_is_error=True))
+    #f_cost_generator = theano.function(inps_gen_adversarial, cost_generator, profile=profile, mode=NanGuardMode(nan_is_error=True, inf_is_error=True, big_is_error=True))
+    f_cost = theano.function(inps, cost, profile=profile)
+    f_cost_discriminator = theano.function(inps, cost_discriminator, profile=profile)
+    f_cost_generator = theano.function(inps_gen_adversarial, cost_generator, profile=profile)
+
     print 'Done'
 
     if model_options['hiero'] is not None:
@@ -734,9 +738,13 @@ def train(dim_word=100,  # word vector dimensionality
     grads_generator = tensor.grad(cost_generator, wrt=itemlist(params_gen_adversarial))
     print 'Done'
     #print 'Building f_grad...',
-    f_grad = theano.function(inps, grads, profile=profile, mode=NanGuardMode(nan_is_error=True, inf_is_error=True, big_is_error=True))
-    f_grad_discriminator = theano.function(inps, grads_discriminator, profile=profile, mode=NanGuardMode(nan_is_error=True, inf_is_error=True, big_is_error=True))
-    f_grad_generator = theano.function(inps_gen_adversarial, grads_generator, profile=profile, mode=NanGuardMode(nan_is_error=True, inf_is_error=True, big_is_error=True))
+    #f_grad = theano.function(inps, grads, profile=profile, mode=NanGuardMode(nan_is_error=True, inf_is_error=True, big_is_error=True))
+    #f_grad_discriminator = theano.function(inps, grads_discriminator, profile=profile, mode=NanGuardMode(nan_is_error=True, inf_is_error=True, big_is_error=True))
+    #f_grad_generator = theano.function(inps_gen_adversarial, grads_generator, profile=profile, mode=NanGuardMode(nan_is_error=True, inf_is_error=True, big_is_error=True))
+    f_grad = theano.function(inps, grads, profile=profile)
+    f_grad_discriminator = theano.function(inps, grads_discriminator, profile=profile)
+    f_grad_generator = theano.function(inps_gen_adversarial, grads_generator, profile=profile)
+
     #print 'Done'
     print('clip_c: {}'.format(clip_c))
     grads = clip_gradients(clip_c, grads)
@@ -773,14 +781,19 @@ def train(dim_word=100,  # word vector dimensionality
     if sampleFreq == -1:
         sampleFreq = len(train[0]) / batch_size
 
-    uidx = 0
+    if reload_:
+        model_name = reload_.split('/')[-1] 
+        uidx = int(model_name.split('_')[1][5:])
+        eidx_start = int(model_name.split('_')[0][5:])
+    else:
+        uidx = 0
     estop = False
 
     #####################
     # Main Training Loop
     #####################
 
-    for eidx in xrange(max_epochs):
+    for eidx in xrange(eidx_start,max_epochs):
         n_samples = 0
 
         train.start()
@@ -986,7 +999,7 @@ if __name__ == '__main__':
           lrate=0.01,
           n_words_src=100000,
           n_words=100000,
-          maxlen=75,
+          maxlen=100,
           optimizer='adadelta',
           batch_size=32,
           valid_batch_size=32,
@@ -998,6 +1011,6 @@ if __name__ == '__main__':
           dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
           dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
           use_dropout=False,
-          reload_=False,
+          reload_='./saved_models/fr-en/adversarial_simple/epoch0_nbUpd3000_model',
           correlation_coeff=0.1,
           clip_c=1.)
