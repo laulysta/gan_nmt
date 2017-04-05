@@ -195,8 +195,8 @@ def build_discriminator_adversarial(B_orig, B_fake, tparams, options):
 
     #mlp_adversarial = get_layer('mlp_adversarial')[1]
 
-    D_orig = mlp_layer(tparams, ctx_mean_orig, options, prefix='mlp_adversarial')
-    D_fake = mlp_layer(tparams, ctx_mean_fake, options, prefix='mlp_adversarial')
+    D_orig = mlp_layer_adversarial(tparams, D_orig, options, prefix='mlp_adversarial')
+    D_fake = mlp_layer_adversarial(tparams, D_fake, options, prefix='mlp_adversarial')
 
     # inps = [B_orig, B_fake]
     # outs = [D_orig, D_fake]
@@ -221,7 +221,7 @@ def build_adversarial_discriminator_cost(D_orig, D_fake, tparams, options):
 
 def build_adversarial_generator_cost(D_fake,tparams, options):
     #D_fake = tensor.matrix('D_fake', dtype='float32')
-    cost = -tensor.mean(tensor.log(D_fake + 1e-8))
+    cost = -tensor.mean(tensor.sum(tensor.log(D_fake + 1e-6)))
 
     #adversarial_generator_cost = theano.function([D_fake], [cost], name='adversarial_generator_cost', profile=profile)
     #return adversarial_generator_cost
@@ -656,27 +656,30 @@ def train(dim_word=100,  # word vector dimensionality
     model_options['decoder_FR'] = 'gru_cond_FR'
     #model_options['encoder_adversarial'] = 'gru_w_mlp'
     # model_options = locals().copy()
-    if dictionary:
-        word_dict, word_idict = load_dictionary(dictionary)
 
-    if dictionary_src:
-            word_dict_src, word_idict_src = load_dictionary(dictionary_src)
-
-    print 'Loading data'
-    load_data, prepare_data = get_dataset(dataset)
-    train, valid, test = load_data(batch_size=batch_size)
-
-    # reload options
+        # reload options
     if reload_:
         with open('{}.npz.pkl'.format(reload_), 'rb') as f:
             saved_options = pkl.load(f)
             model_options.update(saved_options)
 
+    if model_options['dictionary']:
+        word_dict, word_idict = load_dictionary(model_options['dictionary'])
+
+    if model_options['dictionary_src']:
+            word_dict_src, word_idict_src = load_dictionary(model_options['dictionary_src'])
+
+    print 'Loading data'
+    load_data, prepare_data = get_dataset(dataset)
+    train, valid, test = load_data(batch_size=batch_size)
+
+
+
     print 'Building model'
     params = init_params(model_options)
     # reload parameters
-    if reload_ and os.path.exists(saveto):
-        params = load_params(saveto, params)
+    if reload_ and os.path.exists(reload_ + '.npz'):
+        params = load_params(reload_ + '.npz', params)
 
     tparams = init_tparams(params)
 
@@ -823,7 +826,7 @@ def train(dim_word=100,  # word vector dimensionality
             gd = f_grad_discriminator(x, x_mask, y, y_mask)
             gg = f_grad_generator(x, x_mask, y)
             print numpy.array([numpy.isnan(a).sum() for a in g]).sum() + numpy.array([numpy.isnan(a).sum() for a in gd]).sum() + numpy.array([numpy.isnan(a).sum() for a in gg]).sum()
-            print numpy.array([numpy.isinf(a).sum() for a in g]).sum() + numpy.array([numpy.isinf(a).sum() for a in gd]).sum() + numpy.array([numpy.isinf(a).sum() for a in gg]).sum()
+            rint numpy.array([numpy.isinf(a).sum() for a in g]).sum() + numpy.array([numpy.isinf(a).sum() for a in gd]).sum() + numpy.array([numpy.isinf(a).sum() for a in gg]).sum()
             '''
 
             cost = f_update(x, x_mask, y, y_mask, lrate)
@@ -1001,9 +1004,9 @@ if __name__ == '__main__':
           n_words=100000,
           maxlen=100,
           optimizer='adadelta',
-          batch_size=32,
-          valid_batch_size=32,
-          saveto='saved_models/model.npz',
+          batch_size=16,
+          valid_batch_size=16,
+          saveto='saved_models/fr-en/adversarial_complete_init/model.npz',
           validFreq=1000,
           saveFreq=1000,
           sampleFreq=100,
