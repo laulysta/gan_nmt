@@ -211,7 +211,7 @@ def build_adversarial_discriminator_cost(D_orig, D_fake, tparams, options):
     #D_fake = tensor.matrix('D_fake', dtype='float32')
     
     # Review
-    cost = -tensor.mean(tensor.log(1e-6 + tensor.sum(D_orig)) + tensor.log(1e-6 + 1. - tensor.sum(D_fake)))
+    cost = -tensor.mean(tensor.log(1e-6 + D_orig) + tensor.log(1e-6 + 1. - D_fake))
     inps = [D_orig, D_fake]
     outs = [cost]
 
@@ -973,7 +973,7 @@ def train(dim_word=100,  # word vector dimensionality
 
 if __name__ == '__main__':
     train(dim_word=100,
-          dim=1000,
+          dim=500,
           encoder='gru',
           decoder='gru_cond',
           hiero=None,
@@ -986,7 +986,7 @@ if __name__ == '__main__':
           lrate=0.01,
           n_words_src=100000,
           n_words=100000,
-          maxlen=100,
+          maxlen=75,
           optimizer='adadelta',
           batch_size=32,
           valid_batch_size=32,
@@ -995,9 +995,9 @@ if __name__ == '__main__':
           saveFreq=1000,
           sampleFreq=100,
           dataset='stan',
-          dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
-          dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
+          dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
+          dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
           use_dropout=False,
-          reload_='./saved_models/epoch9_nbUpd300000_model',
+          reload_=False,
           correlation_coeff=0.1,
           clip_c=1.)
