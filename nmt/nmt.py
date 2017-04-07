@@ -811,7 +811,7 @@ def train(dim_word=100,  # word vector dimensionality
             if x is None:
                 print 'Minibatch with zero sample under length ', maxlen
                 uidx -= 1
-            #    continue
+                continue
 
             ud_start = time.time()
             '''
@@ -994,7 +994,7 @@ if __name__ == '__main__':
           decoder='gru_cond',
           hiero=None,
           patience=10,
-          max_epochs=5,
+          max_epochs=100,
           dispFreq=10,
           decay_c=0.,
           alpha_c=0.,
@@ -1002,11 +1002,11 @@ if __name__ == '__main__':
           lrate=0.01,
           n_words_src=100000,
           n_words=100000,
-          maxlen=100,
+          maxlen=75,
           optimizer='adadelta',
           batch_size=16,
           valid_batch_size=16,
-          saveto='saved_models/fr-en/adversarial_simple/model.npz',
+          saveto='./saved_models/fr-en/pretrained_adversarial_simple/model.npz',
           validFreq=1000,
           saveFreq=1000,
           sampleFreq=100,
@@ -1014,6 +1014,6 @@ if __name__ == '__main__':
           dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
           dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
           use_dropout=False,
-          reload_='./saved_models/fr-en/adversarial_simple/epoch0_nbUpd6000_model',
+          reload_='./saved_models/fr-en/pretrained_adversarial_simple/pretrain/epoch8_nbUpd130000_model',
           correlation_coeff=0.1,
           clip_c=1.)
