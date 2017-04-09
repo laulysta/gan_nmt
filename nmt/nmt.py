@@ -790,6 +790,7 @@ def train(dim_word=100,  # word vector dimensionality
         eidx_start = int(model_name.split('_')[0][5:])
     else:
         uidx = 0
+        eidx_start = 0
     estop = False
 
     #####################
@@ -811,7 +812,7 @@ def train(dim_word=100,  # word vector dimensionality
             if x is None:
                 print 'Minibatch with zero sample under length ', maxlen
                 uidx -= 1
-            #    continue
+                continue
 
             ud_start = time.time()
             '''
@@ -1014,6 +1015,6 @@ if __name__ == '__main__':
           dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
           dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
           use_dropout=False,
-          reload_='./saved_models/fr-en/adversarial_simple/epoch0_nbUpd6000_model',
+          reload_=False,
           correlation_coeff=0.1,
           clip_c=1.)
