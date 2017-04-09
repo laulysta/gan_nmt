@@ -476,6 +476,12 @@ def train(dim_word=100,  # word vector dimensionality
     model_options = copy.copy(inspect.currentframe().f_locals)
     # model_options = locals().copy()
 
+        # reload options
+    if reload_:
+        with open('{}.npz.pkl'.format(reload_), 'rb') as f:
+            saved_options = pkl.load(f)
+            model_options.update(saved_options)
+
     if dictionary:
         word_dict, word_idict = load_dictionary(dictionary)
 
@@ -486,16 +492,11 @@ def train(dim_word=100,  # word vector dimensionality
     load_data, prepare_data = get_dataset(dataset)
     train, valid, test = load_data(batch_size=batch_size)
 
-    # reload options
-    if reload_:
-        with open('{}.npz.pkl'.format(reload_), 'rb') as f:
-            model_options = pkl.load(f)
-
     print 'Building model'
     params = init_params(model_options)
     # reload parameters
-    if reload_ and os.path.exists(saveto):
-        params = load_params(saveto, params)
+    if reload_ and os.path.exists(reload_ + '.npz'):
+        params = load_params(reload_ + '.npz', params)
 
     tparams = init_tparams(params)
 
@@ -581,14 +582,20 @@ def train(dim_word=100,  # word vector dimensionality
     if sampleFreq == -1:
         sampleFreq = len(train[0]) / batch_size
 
-    uidx = 0
+    if reload_:
+        model_name = reload_.split('/')[-1]
+        uidx = int(model_name.split('_')[1][5:])
+        eidx_start = int(model_name.split('_')[0][5:])
+    else:
+        uidx = 0
+        eidx_start = 0
     estop = False
 
     #####################
     # Main Training Loop
     #####################
 
-    for eidx in xrange(max_epochs):
+    for eidx in xrange(eidx_start, max_epochs):
         n_samples = 0
 
         train.start()
@@ -601,7 +608,7 @@ def train(dim_word=100,  # word vector dimensionality
                                                 n_words_src=n_words_src, n_words=n_words)
 
             if x is None:
-                # print 'Minibatch with zero sample under length ', maxlen
+                print 'Minibatch with zero sample under length ', maxlen
                 uidx -= 1
                 continue
 
@@ -755,7 +762,7 @@ def train(dim_word=100,  # word vector dimensionality
 if __name__ == '__main__':
     start_time = time.time()
     train(dim_word=100,
-          dim=1000,
+          dim=500,
           encoder='gru',
           decoder='gru_cond',
           hiero=None,
@@ -768,11 +775,11 @@ if __name__ == '__main__':
           lrate=0.01,
           n_words_src=100000,
           n_words=100000,
-          maxlen=100,
+          maxlen=50,
           optimizer='adadelta',
-          batch_size=16,
-          valid_batch_size=16,
-          saveto='saved_models/fr-en/model.npz',
+          batch_size=32,
+          valid_batch_size=32,
+          saveto='saved_models/vocab50/model.npz',
           validFreq=1000,
           saveFreq=10000,
           sampleFreq=100,
@@ -780,11 +787,11 @@ if __name__ == '__main__':
           dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
           dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
           use_dropout=False,
-          reload_='./saved_models/fr-en/epoch0_nbUpd31250_model',
+          reload_=False,
           correlation_coeff=0.1,
           clip_c=1.)
 
     end_time = time.time()
-    print'{} epochs in {} seconds'.format(max_epochs, end_time - start_time)
+    print'{} epochs in {} seconds'.format(100, end_time - start_time)
 
 
