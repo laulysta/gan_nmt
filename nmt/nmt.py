@@ -790,6 +790,7 @@ def train(dim_word=100,  # word vector dimensionality
         eidx_start = int(model_name.split('_')[0][5:])
     else:
         uidx = 0
+        eidx_start = 0
     estop = False
 
     #####################
