@@ -194,9 +194,12 @@ def build_discriminator_adversarial(B_orig, B_fake, tparams, options):
     #D_orig =
 
     #mlp_adversarial = get_layer('mlp_adversarial')[1]
-
-    D_orig = mlp_layer(tparams, ctx_mean_orig, options, prefix='mlp_adversarial')
-    D_fake = mlp_layer(tparams, ctx_mean_fake, options, prefix='mlp_adversarial')
+    if options['adversarial_mode'] == 'simple':
+        D_orig = mlp_layer(tparams, ctx_mean_orig, options, prefix='mlp_adversarial')
+        D_fake = mlp_layer(tparams, ctx_mean_fake, options, prefix='mlp_adversarial')
+    elif options['adversarial_mode'] == 'complete':
+        D_orig = mlp_layer_adversarial(tparams, D_orig, options, prefix='mlp_adversarial')
+        D_fake = mlp_layer_adversarial(tparams, D_fake, options, prefix='mlp_adversarial')
 
     # inps = [B_orig, B_fake]
     # outs = [D_orig, D_fake]
@@ -210,8 +213,10 @@ def build_adversarial_discriminator_cost(D_orig, D_fake, tparams, options):
     #D_orig = tensor.matrix('D_orig', dtype='float32')
     #D_fake = tensor.matrix('D_fake', dtype='float32')
     
-    # Review
-    cost = -tensor.mean(tensor.log(1e-6 + D_orig) + tensor.log(1e-6 + 1. - D_fake))
+    if options['adversarial_mode'] == 'simple':
+        cost = -tensor.mean(tensor.log(1e-6 + D_orig) + tensor.log(1e-6 + 1. - D_fake))
+    elif options['adversarial_mode'] == 'complete':
+        cost = -tensor.mean(tensor.sum(tensor.log(1e-6 + D_orig), 0) + tensor.sum(tensor.log(1e-6 + 1. - D_fake), 0))
     inps = [D_orig, D_fake]
     outs = [cost]
 
@@ -221,7 +226,10 @@ def build_adversarial_discriminator_cost(D_orig, D_fake, tparams, options):
 
 def build_adversarial_generator_cost(D_fake,tparams, options):
     #D_fake = tensor.matrix('D_fake', dtype='float32')
-    cost = -tensor.mean(tensor.log(D_fake + 1e-6))
+    if options['adversarial_mode'] == 'simple':
+        cost = -tensor.mean(tensor.log(D_fake + 1e-6))
+    elif options['adversarial_mode'] == 'complete':
+        cost = -tensor.mean(tensor.sum(tensor.log(D_fake + 1e-6), 0))
 
     #adversarial_generator_cost = theano.function([D_fake], [cost], name='adversarial_generator_cost', profile=profile)
     #return adversarial_generator_cost
@@ -650,7 +658,8 @@ def train(dim_word=100,  # word vector dimensionality
           use_dropout=False,
           reload_=False,    # Contains the name of the file to reload or false
           correlation_coeff=0.1,
-          clip_c=0.):
+          clip_c=0., 
+          adversarial_mode='simple'):
 
     model_options = copy.copy(inspect.currentframe().f_locals)
     model_options['decoder_FR'] = 'gru_cond_FR'
@@ -1003,18 +1012,19 @@ if __name__ == '__main__':
           lrate=0.01,
           n_words_src=100000,
           n_words=100000,
-          maxlen=75,
+          maxlen=50,
           optimizer='adadelta',
           batch_size=16,
           valid_batch_size=16,
-          saveto='./saved_models/fr-en/pretrained_adversarial_simple/model.npz',
+          saveto='./saved_models/fr-en/adversarial_complete/reload_from_exp2/model.npz',
           validFreq=1000,
-          saveFreq=1000,
-          sampleFreq=100,
+          saveFreq=10000,
+          sampleFreq=1000,
           dataset='stan',
           dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
           dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
           use_dropout=False,
-          reload_='./saved_models/fr-en/pretrained_adversarial_simple/epoch8_nbUpd151000_model',
+          reload_='./saved_models/fr-en/baseline/vocab50/epoch8_nbUpd120000_model',
           correlation_coeff=0.1,
-          clip_c=1.)
+          clip_c=1.,
+          adversarial_mode='complete')
