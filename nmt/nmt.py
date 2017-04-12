@@ -941,13 +941,13 @@ def train(dim_word=100,  # word vector dimensionality
                 #     train_err += (f_pred(x, mask) == train[1][tindex]).sum()
                 # train_err = 1. - numpy.float32(train_err) / train[0].shape[0]
                 ud_start = time.time()
-                train_err = pred_error(f_pred, prepare_data, train, kf)
+                #train_err = pred_error(f_pred, prepare_data, train, kf)
                 if valid is not None:
                     valid_err = pred_probs(f_log_probs, prepare_data, model_options, valid).mean()
                 if test is not None:
                     test_err = pred_probs(f_log_probs, prepare_data, model_options, test).mean()
 
-                history_errs.append([valid_err, test_err])
+                history_errs.append([eidx, uidx, valid_err])
 
                 if uidx == 0 or valid_err <= numpy.array(history_errs)[:, 0].min():
                     best_p = unzip(tparams)
@@ -1017,15 +1017,15 @@ if __name__ == '__main__':
           optimizer='adadelta',
           batch_size=16,
           valid_batch_size=16,
-          saveto='./saved_models/fr-en/adversarial_complete/reload_from_exp2/model.npz',
-          validFreq=1000,
+          saveto='./saved_models/model.npz',
+          validFreq=100,
           saveFreq=10000,
           sampleFreq=1000,
           dataset='stan',
           dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
           dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
           use_dropout=False,
-          reload_='./saved_models/fr-en/baseline/vocab50/epoch8_nbUpd120000_model',
+          reload_=False,
           correlation_coeff=0.1,
           clip_c=1.,
           adversarial_mode='complete')
