@@ -781,8 +781,9 @@ def train(dim_word=100,  # word vector dimensionality
     # FIXME: review this bit to make sure it is loading properly
     history_errs = []
     # Reload history
-    if reload_ and os.path.exists(saveto):
-        history_errs = list(numpy.load(saveto)['history_errs'])
+    if reload_ and os.path.exists(reload_ + '.npz'):
+        history_errs = list(numpy.load(reload_ + '.npz')['history_errs'])
+
     best_p = None
     bad_count = 0
 
@@ -940,14 +941,14 @@ def train(dim_word=100,  # word vector dimensionality
                 #     x, mask = prepare_data(train[0][train_index])
                 #     train_err += (f_pred(x, mask) == train[1][tindex]).sum()
                 # train_err = 1. - numpy.float32(train_err) / train[0].shape[0]
-
-                # train_err = pred_error(f_pred, prepare_data, train, kf)
+                ud_start = time.time()
+                #train_err = pred_error(f_pred, prepare_data, train, kf)
                 if valid is not None:
                     valid_err = pred_probs(f_log_probs, prepare_data, model_options, valid).mean()
                 if test is not None:
                     test_err = pred_probs(f_log_probs, prepare_data, model_options, test).mean()
 
-                history_errs.append([valid_err, test_err])
+                history_errs.append([eidx, uidx, valid_err])
 
                 if uidx == 0 or valid_err <= numpy.array(history_errs)[:, 0].min():
                     best_p = unzip(tparams)
@@ -958,10 +959,11 @@ def train(dim_word=100,  # word vector dimensionality
                         print 'Early Stop!'
                         estop = True
                         break
-
+                ud_end = time.time()
                 print 'Train ', train_err, 'Valid ', valid_err, 'Test ', test_err
 
                 print 'Seen %d samples' % n_samples
+                print 'ud: {}'.format(ud_end - ud_start)
 
         # print 'Epoch ', eidx, 'Update ', uidx, 'Train ', train_err, 'Valid ', valid_err, 'Test ', test_err
 
@@ -1016,15 +1018,15 @@ if __name__ == '__main__':
           optimizer='adadelta',
           batch_size=16,
           valid_batch_size=16,
-          saveto='./saved_models/fr-en/adversarial_complete/reload_from_exp2/model.npz',
-          validFreq=1000,
+          saveto='./saved_models/model.npz',
+          validFreq=100,
           saveFreq=10000,
           sampleFreq=1000,
           dataset='stan',
           dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
           dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
           use_dropout=False,
-          reload_='./saved_models/fr-en/baseline/vocab50/epoch8_nbUpd120000_model',
+          reload_=False,
           correlation_coeff=0.1,
           clip_c=1.,
           adversarial_mode='complete')
