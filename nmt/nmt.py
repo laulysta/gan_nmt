@@ -940,8 +940,8 @@ def train(dim_word=100,  # word vector dimensionality
                 #     x, mask = prepare_data(train[0][train_index])
                 #     train_err += (f_pred(x, mask) == train[1][tindex]).sum()
                 # train_err = 1. - numpy.float32(train_err) / train[0].shape[0]
-
-                # train_err = pred_error(f_pred, prepare_data, train, kf)
+                ud_start = time.time()
+                train_err = pred_error(f_pred, prepare_data, train, kf)
                 if valid is not None:
                     valid_err = pred_probs(f_log_probs, prepare_data, model_options, valid).mean()
                 if test is not None:
@@ -958,10 +958,11 @@ def train(dim_word=100,  # word vector dimensionality
                         print 'Early Stop!'
                         estop = True
                         break
-
+                ud_end = time.time()
                 print 'Train ', train_err, 'Valid ', valid_err, 'Test ', test_err
 
                 print 'Seen %d samples' % n_samples
+                print 'ud: {}'.format(ud_end - ud_start)
 
         # print 'Epoch ', eidx, 'Update ', uidx, 'Train ', train_err, 'Valid ', valid_err, 'Test ', test_err
 
