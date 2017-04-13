@@ -570,8 +570,8 @@ def train(dim_word=100,  # word vector dimensionality
     # FIXME: review this bit to make sure it is loading properly
     history_errs = []
     # Reload history
-    if reload_ and os.path.exists(saveto):
-        history_errs = list(numpy.load(saveto)['history_errs'])
+    if reload_ and os.path.exists(reload_ + '.npz'):
+        history_errs = list(numpy.load(reload_ + '.npz')['history_errs'])
     best_p = None
     bad_count = 0
 
