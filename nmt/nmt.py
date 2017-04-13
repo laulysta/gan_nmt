@@ -1019,7 +1019,7 @@ if __name__ == '__main__':
           batch_size=16,
           valid_batch_size=16,
           saveto='./saved_models/model.npz',
-          validFreq=100,
+          validFreq=10,
           saveFreq=10000,
           sampleFreq=1000,
           dataset='stan',
