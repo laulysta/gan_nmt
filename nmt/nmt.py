@@ -472,7 +472,7 @@ def train(dim_word=100,  # word vector dimensionality
           reload_=False,    # Contains the name of the file to reload or false
           correlation_coeff=0.1,
           clip_c=0.):
-
+    bad_counter = 0
     model_options = copy.copy(inspect.currentframe().f_locals)
     # model_options = locals().copy()
 
