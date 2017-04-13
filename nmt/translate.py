@@ -139,3 +139,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     main(args.model, args.dictionary, args.dictionary_target, args.source, args.saveto, k=args.k, n_process=args.p, chr_level=args.c)
+
+
+
+# python translate.py ./saved_models/fr-en/epoch11_nbUpd370000_model.npz ../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl ../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl ../data/small_europarl_v7_enfr_txt/valid.fr.txt ./translation_fr_en_epoch11.txt

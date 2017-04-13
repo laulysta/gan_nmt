@@ -75,6 +75,7 @@ def load_data(batch_size=128):
     path_src_valid = '../data/vocab_and_data_small_europarl_v7_enfr/bin_valid.en.h5'
     path_trg_valid = '../data/vocab_and_data_small_europarl_v7_enfr/bin_valid.fr.h5'
 
+
     #############
     # LOAD DATA #
     #############
