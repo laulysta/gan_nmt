@@ -780,14 +780,14 @@ if __name__ == '__main__':
           batch_size=16,
           valid_batch_size=16,
           saveto='saved_models/fr-en/baseline/vocab50/model.npz',
-          validFreq=1000,
+          validFreq=10000,
           saveFreq=10000,
-          sampleFreq=1000,
+          sampleFreq=10000,
           dataset='stan',
           dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
           dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
           use_dropout=False,
-          reload_='saved_models/fr-en/baseline/vocab50/epoch1_nbUpd50000_model',
+          reload_='saved_models/fr-en/baseline/vocab50/epoch9_nbUpd290000_model',
           correlation_coeff=0.1,
           clip_c=1.)
 
