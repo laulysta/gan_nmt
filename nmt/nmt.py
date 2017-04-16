@@ -999,7 +999,7 @@ def train(dim_word=100,  # word vector dimensionality
 
 if __name__ == '__main__':
     train(dim_word=100,
-          dim=500,
+          dim=1000,
           encoder='gru',
           decoder='gru_cond',
           hiero=None,
@@ -1016,7 +1016,7 @@ if __name__ == '__main__':
           optimizer='adadelta',
           batch_size=16,
           valid_batch_size=16,
-          saveto='./saved_models/fr-en/adversarial_complete/reload_from_exp2/model.npz',
+          saveto='./saved_models/fr-en/adversarial_simple/reload_from_exp2/model.npz',
           validFreq=1000,
           saveFreq=10000,
           sampleFreq=1000,
@@ -1024,7 +1024,7 @@ if __name__ == '__main__':
           dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
           dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
           use_dropout=False,
-          reload_='./saved_models/fr-en/baseline/vocab50/epoch8_nbUpd120000_model',
+          reload_='./saved_models/fr-en/adversarial_simple/reload_from_exp2/epoch11_nbUpd360000_model',
           correlation_coeff=0.1,
           clip_c=1.,
-          adversarial_mode='complete')
+          adversarial_mode='simple')
