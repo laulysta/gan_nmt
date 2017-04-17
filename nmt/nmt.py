@@ -781,8 +781,9 @@ def train(dim_word=100,  # word vector dimensionality
     # FIXME: review this bit to make sure it is loading properly
     history_errs = []
     # Reload history
-    if reload_ and os.path.exists(saveto):
-        history_errs = list(numpy.load(saveto)['history_errs'])
+    if reload_ and os.path.exists(reload_ + '.npz'):
+        history_errs = list(numpy.load(reload_ + '.npz')['history_errs'])
+
     best_p = None
     bad_count = 0
 
@@ -1016,21 +1017,15 @@ if __name__ == '__main__':
           optimizer='adadelta',
           batch_size=16,
           valid_batch_size=16,
-<<<<<<< HEAD
-          saveto='./saved_models/fr-en/adversarial_complete/model.npz',
-          validFreq=1000,
-          saveFreq=100000,
-=======
-          saveto='./saved_models/fr-en/adversarial_simple/model.npz',
+          saveto='./saved_models/fr-en/exp1/model.npz',
           validFreq=10000,
           saveFreq=10000,
->>>>>>> beb036cec2bb14614dbe2faa61d6843b28ebe14c
           sampleFreq=1000,
           dataset='stan',
           dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
           dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
           use_dropout=False,
-          reload_=False,
+          reload_='./saved_models/fr-en/baseline/vocab50/epoch8_nbUpd250000_model',
           correlation_coeff=0.1,
           clip_c=1.,
           adversarial_mode='simple')
