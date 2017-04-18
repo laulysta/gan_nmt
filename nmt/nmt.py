@@ -775,11 +775,11 @@ if __name__ == '__main__':
           lrate=0.01,
           n_words_src=100000,
           n_words=100000,
-          maxlen=50,
+          maxlen=100,
           optimizer='adadelta',
           batch_size=16,
           valid_batch_size=16,
-          saveto='saved_models/fr-en/baseline/vocab50/model.npz',
+          saveto='saved_models/fr-en/baseline/vocab100/model.npz',
           validFreq=10000,
           saveFreq=10000,
           sampleFreq=10000,
@@ -787,7 +787,7 @@ if __name__ == '__main__':
           dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
           dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
           use_dropout=False,
-          reload_=False,
+          reload_='saved_models/fr-en/baseline/vocab100/epoch6_nbUpd210000_model',
           correlation_coeff=0.1,
           clip_c=1.)
 
