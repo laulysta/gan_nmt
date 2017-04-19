@@ -1019,7 +1019,7 @@ if __name__ == '__main__':
           optimizer='adadelta',
           batch_size=16,
           valid_batch_size=16,
-          saveto='./saved_models/fr-en/exp2/model.npz',
+          saveto='./saved_models/fr-en/exp1/model.npz',
           validFreq=10000,
           saveFreq=10000,
           sampleFreq=1000,
