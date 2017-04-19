@@ -714,12 +714,12 @@ def train(dim_word=100,  # word vector dimensionality
                 if uidx == 0 or valid_err <= numpy.array(history_errs)[:, 0].min():
                     best_p = unzip(tparams)
                     bad_counter = 0
-                if len(history_errs) > patience and valid_err >= numpy.array(history_errs)[:-patience, 0].min():
-                    bad_counter += 1
-                    if bad_counter > patience:
-                        print 'Early Stop!'
-                        estop = True
-                        break
+                # if len(history_errs) > patience and valid_err >= numpy.array(history_errs)[:-patience, 0].min():
+                #     bad_counter += 1
+                #     if bad_counter > patience:
+                #         print 'Early Stop!'
+                #         estop = True
+                #         break
 
                 print 'Train ', train_err, 'Valid ', valid_err, 'Test ', test_err
 
@@ -762,7 +762,7 @@ def train(dim_word=100,  # word vector dimensionality
 if __name__ == '__main__':
     start_time = time.time()
     train(dim_word=100,
-          dim=500,
+          dim=1000,
           encoder='gru',
           decoder='gru_cond',
           hiero=None,
@@ -777,12 +777,12 @@ if __name__ == '__main__':
           n_words=100000,
           maxlen=50,
           optimizer='adadelta',
-          batch_size=32,
-          valid_batch_size=32,
-          saveto='saved_models/vocab50/model.npz',
-          validFreq=1000,
+          batch_size=16,
+          valid_batch_size=16,
+          saveto='saved_models/fr-en/baseline/vocab50/model.npz',
+          validFreq=10000,
           saveFreq=10000,
-          sampleFreq=100,
+          sampleFreq=10000,
           dataset='stan',
           dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
           dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
