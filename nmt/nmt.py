@@ -660,7 +660,7 @@ def train(dim_word=100,  # word vector dimensionality
           correlation_coeff=0.1,
           clip_c=0., 
           adversarial_mode='simple'):
-
+    bad_counter = 0
     model_options = copy.copy(inspect.currentframe().f_locals)
     model_options['decoder_FR'] = 'gru_cond_FR'
     #model_options['encoder_adversarial'] = 'gru_w_mlp'
@@ -953,13 +953,14 @@ def train(dim_word=100,  # word vector dimensionality
                 if uidx == 0 or valid_err <= numpy.array(history_errs)[:, 0].min():
                     best_p = unzip(tparams)
                     bad_counter = 0
-                if len(history_errs) > patience and valid_err >= numpy.array(history_errs)[:-patience, 0].min():
-                    bad_counter += 1
-                    if bad_counter > patience:
-                        print 'Early Stop!'
-                        estop = True
-                        break
-                ud_end = time.time()
+
+                # if len(history_errs) > patience and valid_err >= numpy.array(history_errs)[:-patience, 0].min():
+                #     bad_counter += 1
+                #     if bad_counter > patience:
+                #         print 'Early Stop!'
+                #         estop = True
+                #         break
+
                 print 'Train ', train_err, 'Valid ', valid_err, 'Test ', test_err
 
                 print 'Seen %d samples' % n_samples
@@ -1001,7 +1002,7 @@ def train(dim_word=100,  # word vector dimensionality
 
 if __name__ == '__main__':
     train(dim_word=100,
-          dim=500,
+          dim=1000,
           encoder='gru',
           decoder='gru_cond',
           hiero=None,
@@ -1014,19 +1015,19 @@ if __name__ == '__main__':
           lrate=0.01,
           n_words_src=100000,
           n_words=100000,
-          maxlen=50,
+          maxlen=100,
           optimizer='adadelta',
           batch_size=16,
           valid_batch_size=16,
-          saveto='./saved_models/model.npz',
-          validFreq=10,
+          saveto='./saved_models/fr-en/exp2/model.npz',
+          validFreq=10000,
           saveFreq=10000,
           sampleFreq=1000,
           dataset='stan',
           dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
           dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
           use_dropout=False,
-          reload_=False,
+          reload_='./saved_models/fr-en/baseline/vocab100/epoch8_nbUpd300000_model',
           correlation_coeff=0.1,
           clip_c=1.,
-          adversarial_mode='complete')
+          adversarial_mode='simple')
