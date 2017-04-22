@@ -761,7 +761,7 @@ def train(dim_word=100,  # word vector dimensionality
 
 if __name__ == '__main__':
     start_time = time.time()
-    train(dim_word=100,
+    train(dim_word=620,
           dim=1000,
           encoder='gru',
           decoder='gru_cond',
@@ -773,13 +773,13 @@ if __name__ == '__main__':
           alpha_c=0.,
           diag_c=0.,
           lrate=0.01,
-          n_words_src=100000,
-          n_words=100000,
+          n_words_src=20000,
+          n_words=20000,
           maxlen=50,
           optimizer='adadelta',
           batch_size=16,
           valid_batch_size=16,
-          saveto='saved_models/fr-en/baseline/vocab50/model.npz',
+          saveto='saved_models/fr-en/baseline/vocab50/exp3/model.npz',
           validFreq=10000,
           saveFreq=10000,
           sampleFreq=10000,
@@ -787,7 +787,7 @@ if __name__ == '__main__':
           dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
           dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
           use_dropout=False,
-          reload_=False,
+          reload_='saved_models/fr-en/baseline/vocab50/epoch9_nbUpd260000_model',
           correlation_coeff=0.1,
           clip_c=1.)
 
