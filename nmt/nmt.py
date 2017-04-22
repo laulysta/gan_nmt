@@ -787,7 +787,7 @@ if __name__ == '__main__':
           dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
           dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
           use_dropout=False,
-          reload_=False,
+          reload_='./saved_models/fr-en/baseline/vocab50/exp3/epoch2_nbUpd70000_model',
           correlation_coeff=0.1,
           clip_c=1.)
 
