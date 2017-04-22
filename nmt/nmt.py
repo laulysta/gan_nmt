@@ -1017,7 +1017,7 @@ if __name__ == '__main__':
           optimizer='adadelta',
           batch_size=16,
           valid_batch_size=16,
-          saveto='./saved_models/fr-en/exp1/model.npz',
+          saveto='./saved_models/fr-en/exp1_complete/model.npz',
           validFreq=10000,
           saveFreq=10000,
           sampleFreq=1000,
@@ -1025,7 +1025,7 @@ if __name__ == '__main__':
           dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
           dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
           use_dropout=False,
-          reload_='./saved_models/fr-en/baseline/vocab50/epoch8_nbUpd250000_model',
+          reload_='./saved_models/fr-en/exp1_complete/epoch9_nbUpd280000_model',
           correlation_coeff=0.1,
           clip_c=1.,
-          adversarial_mode='simple')
+          adversarial_mode='complete')
