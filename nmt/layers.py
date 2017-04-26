@@ -32,12 +32,12 @@ def linear(x):
 
 
 # dropout
-def dropout_layer(state_before, use_noise, trng):
+def dropout_layer(state_before, use_noise, trng, keep_p=0.5):
     proj = tensor.switch(use_noise,
                          state_before * trng.binomial(state_before.shape,
-                                                      p=0.5, n=1,
+                                                      keep_p=p, n=1,
                                                       dtype=state_before.dtype),
-                         state_before * 0.5)
+                         state_before * p)
     return proj
 
 
