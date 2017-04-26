@@ -1013,7 +1013,7 @@ if __name__ == '__main__':
           lrate=0.01,
           n_words_src=100000,
           n_words=100000,
-          maxlen=50,
+          maxlen=100,
           optimizer='adadelta',
           batch_size=16,
           valid_batch_size=16,
@@ -1028,4 +1028,4 @@ if __name__ == '__main__':
           reload_='./saved_models/fr-en/exp1_complete/epoch9_nbUpd280000_model',
           correlation_coeff=0.1,
           clip_c=1.,
-          adversarial_mode='complete')
+          adversarial_mode='simple')
