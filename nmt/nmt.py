@@ -694,6 +694,7 @@ def train(dim_word=100,  # word vector dimensionality
     tparams = init_tparams(params)
 
     trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost, cost_discriminator, cost_generator, B_tf, B_fr, D_o, D_f = build_model(tparams, model_options)
+    cost_generator = cost_generator * lambda_adv
     inps = [x, x_mask, y, y_mask]
     inps_gen_adversarial = [x, x_mask, y]
 
@@ -732,7 +733,8 @@ def train(dim_word=100,  # word vector dimensionality
     #f_cost_generator = theano.function(inps_gen_adversarial, cost_generator, profile=profile, mode=NanGuardMode(nan_is_error=True, inf_is_error=True, big_is_error=True))
     f_cost = theano.function(inps, cost, profile=profile)
     f_cost_discriminator = theano.function(inps, cost_discriminator, profile=profile)
-    f_cost_generator = theano.function(inps_gen_adversarial, cost_generator, profile=profile) * lambda_adv
+    f_cost_generator = theano.function(inps_gen_adversarial, cost_generator, profile=profile)
+
 
     print 'Done'
 
@@ -845,7 +847,7 @@ def train(dim_word=100,  # word vector dimensionality
             D_orig, D_fake = f_D(x, x_mask, y, y_mask)
             discriminator_accuracy = ((D_fake < 0.5).sum() + (D_orig > 0.5).sum()) / (1.0 * (D_fake.size + D_orig.size))
 
-            if discriminator_accuracy < 0.95:
+            if discriminator_accuracy < 0.99:
                 cost_discriminator = f_update_discriminator(x, x_mask, y, y_mask, lrate)
             if discriminator_accuracy > 0.75:
                 cost_generator = f_update_generator(x, x_mask, y, lrate)
