@@ -659,7 +659,8 @@ def train(dim_word=100,  # word vector dimensionality
           reload_=False,    # Contains the name of the file to reload or false
           correlation_coeff=0.1,
           clip_c=0., 
-          adversarial_mode='simple'):
+          adversarial_mode='simple',
+          lambda_adv=1.):
     bad_counter = 0
     model_options = copy.copy(inspect.currentframe().f_locals)
     model_options['decoder_FR'] = 'gru_cond_FR'
@@ -731,7 +732,7 @@ def train(dim_word=100,  # word vector dimensionality
     #f_cost_generator = theano.function(inps_gen_adversarial, cost_generator, profile=profile, mode=NanGuardMode(nan_is_error=True, inf_is_error=True, big_is_error=True))
     f_cost = theano.function(inps, cost, profile=profile)
     f_cost_discriminator = theano.function(inps, cost_discriminator, profile=profile)
-    f_cost_generator = theano.function(inps_gen_adversarial, cost_generator, profile=profile)
+    f_cost_generator = theano.function(inps_gen_adversarial, cost_generator, profile=profile) * lambda_adv
 
     print 'Done'
 
@@ -999,7 +1000,7 @@ def train(dim_word=100,  # word vector dimensionality
 
 
 if __name__ == '__main__':
-    train(dim_word=100,
+    train(dim_word=620,
           dim=1000,
           encoder='gru',
           decoder='gru_cond',
@@ -1011,13 +1012,13 @@ if __name__ == '__main__':
           alpha_c=0.,
           diag_c=0.,
           lrate=0.01,
-          n_words_src=100000,
-          n_words=100000,
+          n_words_src=20000,
+          n_words=20000,
           maxlen=50,
           optimizer='adadelta',
           batch_size=16,
           valid_batch_size=16,
-          saveto='./saved_models/fr-en/exp1_complete/model.npz',
+          saveto='./saved_models/fr-en/exp3/exp3_1/model.npz',
           validFreq=10000,
           saveFreq=10000,
           sampleFreq=1000,
@@ -1025,7 +1026,8 @@ if __name__ == '__main__':
           dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
           dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
           use_dropout=False,
-          reload_='./saved_models/fr-en/exp1_complete/epoch9_nbUpd280000_model',
+          reload_=False,
           correlation_coeff=0.1,
           clip_c=1.,
-          adversarial_mode='complete')
+          adversarial_mode='simple',
+          lambda_adv=5.)
