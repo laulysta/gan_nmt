@@ -212,7 +212,7 @@ def build_discriminator_adversarial(B_orig, B_fake, tparams, options):
 def build_adversarial_discriminator_cost(D_orig, D_fake, tparams, options):
     #D_orig = tensor.matrix('D_orig', dtype='float32')
     #D_fake = tensor.matrix('D_fake', dtype='float32')
-    
+
     if options['adversarial_mode'] == 'simple':
         cost = -tensor.mean(tensor.log(1e-6 + D_orig) + tensor.log(1e-6 + 1. - D_fake))
     elif options['adversarial_mode'] == 'complete':
@@ -220,17 +220,22 @@ def build_adversarial_discriminator_cost(D_orig, D_fake, tparams, options):
     inps = [D_orig, D_fake]
     outs = [cost]
 
-    #discriminator_adversarial_cost = theano.function(inps, outs, name='discriminator_adversarial_cost', profile=profile)
-    #return discriminator_adversarial_cost
-    return cost
 
 def build_adversarial_generator_cost(D_fake,tparams, options):
-    #D_fake = tensor.matrix('D_fake', dtype='float32')
-    if options['adversarial_mode'] == 'simple':
-        cost = -tensor.mean(tensor.log(D_fake + 1e-6))
-    elif options['adversarial_mode'] == 'complete':
-        cost = -tensor.mean(tensor.sum(tensor.log(D_fake + 1e-6), 0))
+    if options['adversarial_cost'] == 'default':
+        #D_fake = tensor.matrix('D_fake', dtype='float32')
+        if options['adversarial_mode'] == 'simple':
+            cost = -tensor.mean(tensor.log(D_fake + 1e-6))
+        elif options['adversarial_mode'] == 'complete':
+            cost = -tensor.mean(tensor.sum(tensor.log(D_fake + 1e-6), 0))
 
+    if options['adversarial_cost'] == 'bs_cost':
+        if options['adversarial_mode'] == 'simple':
+            cost = tensor.mean((tensor.log(D_fake + 1e-6) -  tensor.log(1. - D_fake + 1e-6)) ** 2)
+        elif options['adversarial_mode'] == 'complete':
+            cost = tensor.mean(tensor.sum((tensor.log(D_fake + 1e-6) - tensor.log(1. - D_fake + 1e-6))**2, 0))
+
+    
     #adversarial_generator_cost = theano.function([D_fake], [cost], name='adversarial_generator_cost', profile=profile)
     #return adversarial_generator_cost
     return cost
@@ -1028,4 +1033,5 @@ if __name__ == '__main__':
           reload_='./saved_models/fr-en/exp1_complete/epoch9_nbUpd280000_model',
           correlation_coeff=0.1,
           clip_c=1.,
-          adversarial_mode='complete')
+          adversarial_mode='complete',
+          adversarial_cost='default')
