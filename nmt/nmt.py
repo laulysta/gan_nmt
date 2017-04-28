@@ -124,6 +124,12 @@ def build_model(tparams, options):
     # src_lengths = x_mask.sum(axis=0)
 
     emb = tparams['Wemb'][x.flatten()].reshape([n_timesteps, n_samples, options['dim_word']])
+
+    # Use dropout in the embedding layer
+    if options['use_dropout']:
+        # options['use_dropout'] drop probability
+        emb = dropout_layer(emb, use_noise, trng, p=1.0-options['use_dropout'])
+
     encoder = get_layer(options['encoder'])[1]
 
     proj = encoder(tparams, emb, options, prefix='encoder', mask=x_mask)
@@ -165,10 +171,17 @@ def build_model(tparams, options):
 
     # decoder
     decoder = get_layer(options['decoder'])[1]
+    if options['use_dropout']:
+        # options['use_dropout'] drop probability
+        emb = dropout_layer(emb, use_noise, trng, p=1.0-options['use_dropout'])
+
     proj = decoder(tparams, emb, options, prefix='decoder', mask=y_mask,
                    context=ctx, context_mask=x_mask, one_step=False,
                    init_state=init_state, init_memory=init_memory)
     proj_h = proj[0]
+    if options['use_dropout']:
+        # options['use_dropout'] drop probability
+        proj_h = dropout_layer(proj_h, use_noise, trng, p=1.0-options['use_dropout'])
 
     if options['decoder'].endswith('simple'):
         ctxs = ctx[None, :, :]
