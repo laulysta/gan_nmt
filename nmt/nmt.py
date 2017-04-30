@@ -220,6 +220,8 @@ def build_adversarial_discriminator_cost(D_orig, D_fake, tparams, options):
     inps = [D_orig, D_fake]
     outs = [cost]
 
+    return cost
+
 
 def build_adversarial_generator_cost(D_fake,tparams, options):
     if options['adversarial_cost'] == 'default':
@@ -702,7 +704,7 @@ def train(dim_word=100,  # word vector dimensionality
     tparams = init_tparams(params)
 
     trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost, cost_discriminator, cost_generator, B_tf, B_fr, D_o, D_f = build_model(tparams, model_options)
-    cost_generator = cost_generator * lambda_adv
+    #cost_generator = cost_generator #* lambda_adv
     inps = [x, x_mask, y, y_mask]
     inps_gen_adversarial = [x, x_mask, y]
 
