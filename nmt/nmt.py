@@ -128,7 +128,7 @@ def build_model(tparams, options):
     # Use dropout in the embedding layer
     if options['use_dropout']:
         # options['use_dropout'] drop probability
-        emb = dropout_layer(emb, use_noise, trng, p=1.0-options['use_dropout'])
+        emb = dropout_layer(emb, use_noise, trng, keep_p=1.0-options['use_dropout'])
 
     encoder = get_layer(options['encoder'])[1]
 
@@ -173,7 +173,7 @@ def build_model(tparams, options):
     decoder = get_layer(options['decoder'])[1]
     if options['use_dropout']:
         # options['use_dropout'] drop probability
-        emb = dropout_layer(emb, use_noise, trng, p=1.0-options['use_dropout'])
+        emb = dropout_layer(emb, use_noise, trng, keep_p=1.0-options['use_dropout'])
 
     proj = decoder(tparams, emb, options, prefix='decoder', mask=y_mask,
                    context=ctx, context_mask=x_mask, one_step=False,
@@ -181,7 +181,7 @@ def build_model(tparams, options):
     proj_h = proj[0]
     if options['use_dropout']:
         # options['use_dropout'] drop probability
-        proj_h = dropout_layer(proj_h, use_noise, trng, p=1.0-options['use_dropout'])
+        proj_h = dropout_layer(proj_h, use_noise, trng, keep_p=1.0-options['use_dropout'])
 
     if options['decoder'].endswith('simple'):
         ctxs = ctx[None, :, :]
@@ -792,7 +792,7 @@ if __name__ == '__main__':
           optimizer='adadelta',
           batch_size=16,
           valid_batch_size=16,
-          saveto='saved_models/de-en/baseline/model.npz',
+          saveto='saved_models/de-en/baseline_dropout/model.npz',
           validFreq=10000,
           saveFreq=10000,
           sampleFreq=10000,
@@ -800,7 +800,7 @@ if __name__ == '__main__':
           dictionary='../data/data_vocab_europarl_en_de_h5/vocab.en.pkl',
           dictionary_src='../data/data_vocab_europarl_en_de_h5/vocab.de.pkl',
           use_dropout=0.5,
-          reload_=False,
+          reload_='saved_models/de-en/baseline_dropout/epoch3_nbUpd400000_model',
           correlation_coeff=0.1,
           clip_c=1.)
 
