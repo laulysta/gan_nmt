@@ -961,7 +961,7 @@ def train(dim_word=100,  # word vector dimensionality
                 if test is not None:
                     test_err = pred_probs(f_log_probs, prepare_data, model_options, test).mean()
 
-                history_errs.append([eidx, uidx, valid_err])
+                history_errs.append([valid_err, test_err])
 
                 if uidx == 0 or valid_err <= numpy.array(history_errs)[:, 0].min():
                     best_p = unzip(tparams)
@@ -1040,7 +1040,7 @@ if __name__ == '__main__':
           dictionary='../data/data_vocab_europarl_en_de_h5/vocab.en.pkl',
           dictionary_src='../data/data_vocab_europarl_en_de_h5/vocab.de.pkl',
           use_dropout=False,
-          reload_='./saved_models/de-en/exp3/adversarial_noinit/lambda1_bscost/epoch1_nbUpd170000_model',
+          reload_='./saved_models/de-en/exp3/adversarial_noinit/lambda1_bscost/epoch1_nbUpd240000_model',
           correlation_coeff=0.1,
           clip_c=1.,
           adversarial_mode='simple',
