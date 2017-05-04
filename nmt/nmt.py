@@ -704,7 +704,7 @@ def train(dim_word=100,  # word vector dimensionality
     tparams = init_tparams(params)
 
     trng, use_noise, x, x_mask, y, y_mask, opt_ret, cost, cost_discriminator, cost_generator, B_tf, B_fr, D_o, D_f = build_model(tparams, model_options)
-    #cost_generator = cost_generator #* lambda_adv
+    cost_generator = cost_generator * lambda_adv
     inps = [x, x_mask, y, y_mask]
     inps_gen_adversarial = [x, x_mask, y]
 
@@ -1030,7 +1030,7 @@ if __name__ == '__main__':
           optimizer='adadelta',
           batch_size=16,
           valid_batch_size=16,
-          saveto='./saved_models/de-en/exp3/adversarial_noinit/lambda5/model.npz',
+          saveto='./saved_models/de-en/exp3/adversarial_noinit/lambda1_bscost/model.npz',
           validFreq=10000,
           saveFreq=10000,
           sampleFreq=1000,
@@ -1038,10 +1038,10 @@ if __name__ == '__main__':
           dictionary='../data/data_vocab_europarl_en_de_h5/vocab.en.pkl',
           dictionary_src='../data/data_vocab_europarl_en_de_h5/vocab.de.pkl',
           use_dropout=False,
-          reload_=False,
+          reload_='./saved_models/de-en/exp3/adversarial_noinit/lambda1_bscost/epoch1_nbUpd170000_model',
           correlation_coeff=0.1,
           clip_c=1.,
           adversarial_mode='simple',
-          adversarial_cost='default',
-          lambda_adv=5.)
+          adversarial_cost='bs_cost',
+          lambda_adv=1.)
 
