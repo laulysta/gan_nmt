@@ -954,18 +954,19 @@ def train(dim_word=100,  # word vector dimensionality
                 #     x, mask = prepare_data(train[0][train_index])
                 #     train_err += (f_pred(x, mask) == train[1][tindex]).sum()
                 # train_err = 1. - numpy.float32(train_err) / train[0].shape[0]
-
-                # train_err = pred_error(f_pred, prepare_data, train, kf)
+                ud_start = time.time()
+                #train_err = pred_error(f_pred, prepare_data, train, kf)
                 if valid is not None:
                     valid_err = pred_probs(f_log_probs, prepare_data, model_options, valid).mean()
                 if test is not None:
                     test_err = pred_probs(f_log_probs, prepare_data, model_options, test).mean()
 
-                history_errs.append([valid_err, test_err])
+                history_errs.append([eidx, uidx, valid_err])
 
                 if uidx == 0 or valid_err <= numpy.array(history_errs)[:, 0].min():
                     best_p = unzip(tparams)
                     bad_counter = 0
+
                 # if len(history_errs) > patience and valid_err >= numpy.array(history_errs)[:-patience, 0].min():
                 #     bad_counter += 1
                 #     if bad_counter > patience:
@@ -976,6 +977,7 @@ def train(dim_word=100,  # word vector dimensionality
                 print 'Train ', train_err, 'Valid ', valid_err, 'Test ', test_err
 
                 print 'Seen %d samples' % n_samples
+                print 'ud: {}'.format(ud_end - ud_start)
 
         # print 'Epoch ', eidx, 'Update ', uidx, 'Train ', train_err, 'Valid ', valid_err, 'Test ', test_err
 
