@@ -977,7 +977,7 @@ def train(dim_word=100,  # word vector dimensionality
                 print 'Train ', train_err, 'Valid ', valid_err, 'Test ', test_err
 
                 print 'Seen %d samples' % n_samples
-                print 'ud: {}'.format(ud_end - ud_start)
+                #print 'ud: {}'.format(ud_end - ud_start)
 
         # print 'Epoch ', eidx, 'Update ', uidx, 'Train ', train_err, 'Valid ', valid_err, 'Test ', test_err
 
@@ -1040,7 +1040,7 @@ if __name__ == '__main__':
           dictionary='../data/data_vocab_europarl_en_de_h5/vocab.en.pkl',
           dictionary_src='../data/data_vocab_europarl_en_de_h5/vocab.de.pkl',
           use_dropout=False,
-          reload_='./saved_models/de-en/exp3/adversarial_noinit/lambda1_bscost/epoch1_nbUpd240000_model',
+          reload_='./saved_models/de-en/exp3/adversarial_noinit/lambda1_bscost/epoch1_nbUpd250000_model',
           correlation_coeff=0.1,
           clip_c=1.,
           adversarial_mode='simple',
