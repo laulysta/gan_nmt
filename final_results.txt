@@ -1,0 +1,19 @@
+
+
++++++++++++++++
+Test results
++++++++++++++++
+Beamshearch 5
+--------------
+Baseline	15.94
+BS_l1		15.79
+Adv_L5		16.34
+Adv_L15		16.85
+
+Greedy
+--------------
+Baseline	13.95
+BS_l1		14.93
+Adv_L5		14.85
+Adv_L15		15.23
+

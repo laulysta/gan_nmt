@@ -212,7 +212,7 @@ def build_discriminator_adversarial(B_orig, B_fake, tparams, options):
 def build_adversarial_discriminator_cost(D_orig, D_fake, tparams, options):
     #D_orig = tensor.matrix('D_orig', dtype='float32')
     #D_fake = tensor.matrix('D_fake', dtype='float32')
-    
+
     if options['adversarial_mode'] == 'simple':
         cost = -tensor.mean(tensor.log(1e-6 + D_orig) + tensor.log(1e-6 + 1. - D_fake))
     elif options['adversarial_mode'] == 'complete':
@@ -220,17 +220,24 @@ def build_adversarial_discriminator_cost(D_orig, D_fake, tparams, options):
     inps = [D_orig, D_fake]
     outs = [cost]
 
-    #discriminator_adversarial_cost = theano.function(inps, outs, name='discriminator_adversarial_cost', profile=profile)
-    #return discriminator_adversarial_cost
     return cost
 
-def build_adversarial_generator_cost(D_fake,tparams, options):
-    #D_fake = tensor.matrix('D_fake', dtype='float32')
-    if options['adversarial_mode'] == 'simple':
-        cost = -tensor.mean(tensor.log(D_fake + 1e-6))
-    elif options['adversarial_mode'] == 'complete':
-        cost = -tensor.mean(tensor.sum(tensor.log(D_fake + 1e-6), 0))
 
+def build_adversarial_generator_cost(D_fake,tparams, options):
+    if options['adversarial_cost'] == 'default':
+        #D_fake = tensor.matrix('D_fake', dtype='float32')
+        if options['adversarial_mode'] == 'simple':
+            cost = -tensor.mean(tensor.log(D_fake + 1e-6))
+        elif options['adversarial_mode'] == 'complete':
+            cost = -tensor.mean(tensor.sum(tensor.log(D_fake + 1e-6), 0))
+
+    if options['adversarial_cost'] == 'bs_cost':
+        if options['adversarial_mode'] == 'simple':
+            cost = tensor.mean((tensor.log(D_fake + 1e-6) -  tensor.log(1. - D_fake + 1e-6)) ** 2)
+        elif options['adversarial_mode'] == 'complete':
+            cost = tensor.mean(tensor.sum((tensor.log(D_fake + 1e-6) - tensor.log(1. - D_fake + 1e-6))**2, 0))
+
+    
     #adversarial_generator_cost = theano.function([D_fake], [cost], name='adversarial_generator_cost', profile=profile)
     #return adversarial_generator_cost
     return cost
@@ -660,7 +667,10 @@ def train(dim_word=100,  # word vector dimensionality
           correlation_coeff=0.1,
           clip_c=0., 
           adversarial_mode='simple',
+          adversarial_cost='default',
           lambda_adv=1.):
+
+
     bad_counter = 0
     model_options = copy.copy(inspect.currentframe().f_locals)
     model_options['decoder_FR'] = 'gru_cond_FR'
@@ -944,8 +954,8 @@ def train(dim_word=100,  # word vector dimensionality
                 #     x, mask = prepare_data(train[0][train_index])
                 #     train_err += (f_pred(x, mask) == train[1][tindex]).sum()
                 # train_err = 1. - numpy.float32(train_err) / train[0].shape[0]
-
-                # train_err = pred_error(f_pred, prepare_data, train, kf)
+                ud_start = time.time()
+                #train_err = pred_error(f_pred, prepare_data, train, kf)
                 if valid is not None:
                     valid_err = pred_probs(f_log_probs, prepare_data, model_options, valid).mean()
                 if test is not None:
@@ -956,6 +966,7 @@ def train(dim_word=100,  # word vector dimensionality
                 if uidx == 0 or valid_err <= numpy.array(history_errs)[:, 0].min():
                     best_p = unzip(tparams)
                     bad_counter = 0
+
                 # if len(history_errs) > patience and valid_err >= numpy.array(history_errs)[:-patience, 0].min():
                 #     bad_counter += 1
                 #     if bad_counter > patience:
@@ -966,6 +977,7 @@ def train(dim_word=100,  # word vector dimensionality
                 print 'Train ', train_err, 'Valid ', valid_err, 'Test ', test_err
 
                 print 'Seen %d samples' % n_samples
+                #print 'ud: {}'.format(ud_end - ud_start)
 
         # print 'Epoch ', eidx, 'Update ', uidx, 'Train ', train_err, 'Valid ', valid_err, 'Test ', test_err
 
@@ -1020,16 +1032,17 @@ if __name__ == '__main__':
           optimizer='adadelta',
           batch_size=16,
           valid_batch_size=16,
-          saveto='./saved_models/fr-en/exp3/exp3_1/model.npz',
+          saveto='./saved_models/de-en/exp3/adversarial_noinit/lambda1_bscost/model.npz',
           validFreq=10000,
           saveFreq=10000,
           sampleFreq=1000,
           dataset='stan',
-          dictionary='../data/vocab_and_data_small_europarl_v7_enfr/vocab.en.pkl',
-          dictionary_src='../data/vocab_and_data_small_europarl_v7_enfr/vocab.fr.pkl',
+          dictionary='../data/data_vocab_europarl_en_de_h5/vocab.en.pkl',
+          dictionary_src='../data/data_vocab_europarl_en_de_h5/vocab.de.pkl',
           use_dropout=False,
-          reload_=False,
+          reload_='./saved_models/de-en/exp3/adversarial_noinit/lambda1_bscost/epoch1_nbUpd250000_model',
           correlation_coeff=0.1,
           clip_c=1.,
           adversarial_mode='complete',
           lambda_adv=5.)
+
