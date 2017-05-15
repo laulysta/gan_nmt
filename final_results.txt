@@ -10,6 +10,13 @@ BS_l1		15.79
 Adv_L5		16.34
 Adv_L15		16.85
 
+bs_cost_nobounds 14.85
+Adv_150_Att	15.91
+Adv_L150 16.46
+
+
+
+
 Greedy
 --------------
 Baseline	13.95
