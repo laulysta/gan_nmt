@@ -1043,7 +1043,6 @@ if __name__ == '__main__':
           reload_='./saved_models/de-en/exp3/adversarial_noinit/lambda1_bscost/epoch1_nbUpd250000_model',
           correlation_coeff=0.1,
           clip_c=1.,
-          adversarial_mode='simple',
-          adversarial_cost='bs_cost',
-          lambda_adv=1.)
+          adversarial_mode='complete',
+          lambda_adv=5.)
 
