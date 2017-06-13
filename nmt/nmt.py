@@ -139,6 +139,9 @@ def build_model(tparams, options):
         ctx_mean = ctx
     else:
         embr = tparams['Wemb'][xr.flatten()].reshape([n_timesteps, n_samples, options['dim_word']])
+        if options['use_dropout']:
+            embr = dropout_layer(embr, use_noise, trng, keep_p=1.0-options['use_dropout'])
+        
         encoder_r = get_layer(options['encoder'])[1]
         projr = encoder_r(tparams, embr, options, prefix='encoder_r', mask=xr_mask)
         ctx = concatenate([proj[0], projr[0][::-1]], axis=proj[0].ndim - 1)
@@ -178,6 +181,7 @@ def build_model(tparams, options):
     proj = decoder(tparams, emb, options, prefix='decoder', mask=y_mask,
                    context=ctx, context_mask=x_mask, one_step=False,
                    init_state=init_state, init_memory=init_memory)
+
     proj_h = proj[0]
     if options['use_dropout']:
         # options['use_dropout'] drop probability
@@ -199,6 +203,9 @@ def build_model(tparams, options):
 
     logit = tensor.tanh(logit_lstm + logit_prev + logit_ctx)
     logit = get_layer('ff')[1](tparams, logit, options, prefix='ff_logit', activ='linear')
+
+    if options['use_dropout']:
+        logit = dropout_layer(logit, use_noise, trng, keep_p=1.0-options['use_dropout'])
 
     logit_shp = logit.shape
 
@@ -792,7 +799,7 @@ if __name__ == '__main__':
           optimizer='adadelta',
           batch_size=16,
           valid_batch_size=16,
-          saveto='saved_models/de-en/baseline_dropout/model.npz',
+          saveto='saved_models/de-en/baseline_dropout0-5/model.npz',
           validFreq=10000,
           saveFreq=10000,
           sampleFreq=10000,
@@ -800,7 +807,7 @@ if __name__ == '__main__':
           dictionary='../data/data_vocab_europarl_en_de_h5/vocab.en.pkl',
           dictionary_src='../data/data_vocab_europarl_en_de_h5/vocab.de.pkl',
           use_dropout=0.5,
-          reload_='saved_models/de-en/baseline_dropout/epoch3_nbUpd400000_model',
+          reload_=False,
           correlation_coeff=0.1,
           clip_c=1.)
 
