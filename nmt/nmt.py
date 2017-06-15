@@ -141,7 +141,7 @@ def build_model(tparams, options):
         embr = tparams['Wemb'][xr.flatten()].reshape([n_timesteps, n_samples, options['dim_word']])
         if options['use_dropout']:
             embr = dropout_layer(embr, use_noise, trng, keep_p=1.0-options['use_dropout'])
-        
+
         encoder_r = get_layer(options['encoder'])[1]
         projr = encoder_r(tparams, embr, options, prefix='encoder_r', mask=xr_mask)
         ctx = concatenate([proj[0], projr[0][::-1]], axis=proj[0].ndim - 1)
@@ -183,9 +183,9 @@ def build_model(tparams, options):
                    init_state=init_state, init_memory=init_memory)
 
     proj_h = proj[0]
-    if options['use_dropout']:
+    # if options['use_dropout']:
         # options['use_dropout'] drop probability
-        proj_h = dropout_layer(proj_h, use_noise, trng, keep_p=1.0-options['use_dropout'])
+    #    proj_h = dropout_layer(proj_h, use_noise, trng, keep_p=1.0-options['use_dropout'])
 
     if options['decoder'].endswith('simple'):
         ctxs = ctx[None, :, :]
@@ -202,11 +202,11 @@ def build_model(tparams, options):
     logit_ctx = get_layer('ff_nb')[1](tparams, ctxs, options, prefix='ff_nb_logit_ctx', activ='linear')
 
     logit = tensor.tanh(logit_lstm + logit_prev + logit_ctx)
-    logit = get_layer('ff')[1](tparams, logit, options, prefix='ff_logit', activ='linear')
 
     if options['use_dropout']:
         logit = dropout_layer(logit, use_noise, trng, keep_p=1.0-options['use_dropout'])
 
+    logit = get_layer('ff')[1](tparams, logit, options, prefix='ff_logit', activ='linear')
     logit_shp = logit.shape
 
     probs = tensor.nnet.softmax(logit.reshape([logit_shp[0] * logit_shp[1], logit_shp[2]]))
@@ -582,6 +582,7 @@ def train(dim_word=100,  # word vector dimensionality
     lr = tensor.scalar(name='lr')
     print 'Building optimizers...',
     # f_grad_shared, f_update = eval(optimizer)(lr, tparams, grads, inps, cost)
+    #f_update = eval(optimizer)(lr, tparams, grads, inps, cost, updates=updates)
     f_update = eval(optimizer)(lr, tparams, grads, inps, cost)
     print 'Done'
 
