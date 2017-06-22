@@ -15,7 +15,7 @@ module load nltk/3.2.2
 module load scikit-learn/intel/0.18.1
 module load cuda/8.0.44
 module load cudnn/8.0v5.1
-module load pytables/intel/2.4.0
+#module load pytables/intel/2.4.0
 module load pytables/intel/3.4.2
 
 
@@ -25,4 +25,4 @@ DST=/home/fnd212/repos/nmt/nmt/saved_models/de-en/baseline_dropout0-5/
 cd $SRC ; THENAO_FLAGS=floatX=float32,device=gpu \
 		  python -u nmt.py > $DST/log.log
 
-#1156748
+#1161537
