@@ -4,7 +4,7 @@
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:p1080:1
 #SBATCH --time=48:00:00
-#SBATCH --mem=64GB
+#SBATCH --mem=50GB
 #SBATCH --nodes=1
 #SBATCH --error=/home/fnd212/repos/nmt/err/slurm_%j.out
 #SBATCH --output=/home/fnd212/repos/nmt/out/slurm_%j.out
