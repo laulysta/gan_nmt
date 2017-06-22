@@ -782,8 +782,8 @@ def train(dim_word=100,  # word vector dimensionality
 
 if __name__ == '__main__':
     start_time = time.time()
-    train(dim_word=620,
-          dim=1000,
+    train(dim_word=62,
+          dim=100,
           encoder='gru',
           decoder='gru_cond',
           hiero=None,
@@ -814,5 +814,3 @@ if __name__ == '__main__':
 
     end_time = time.time()
     print'{} epochs in {} seconds'.format(100, end_time - start_time)
-
-
