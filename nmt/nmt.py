@@ -782,8 +782,8 @@ def train(dim_word=100,  # word vector dimensionality
 
 if __name__ == '__main__':
     start_time = time.time()
-    train(dim_word=62,
-          dim=100,
+    train(dim_word=620,
+          dim=1000,
           encoder='gru',
           decoder='gru_cond',
           hiero=None,

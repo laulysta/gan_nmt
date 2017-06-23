@@ -5,7 +5,7 @@
 #SBATCH --gres=gpu:p1080:1
 #SBATCH --time=48:00:00
 #SBATCH --mem=50GB
-#SBATCH --nodes=1
+#SBATCH --nodes=3
 #SBATCH --error=/home/fnd212/repos/nmt/err/slurm_%j.out
 #SBATCH --output=/home/fnd212/repos/nmt/out/slurm_%j.out
 
@@ -23,6 +23,5 @@ SRC=/home/fnd212/repos/nmt/nmt
 DST=/home/fnd212/repos/nmt/nmt/saved_models/de-en/baseline_dropout0-5/
 
 cd $SRC ; THENAO_FLAGS=floatX=float32,device=gpu \
-		  python -u nmt.py > $DST/log.log
+          python -u nmt.py > $DST/log.log
 
-#1161537
