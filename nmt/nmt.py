@@ -16,6 +16,8 @@ import time
 
 from collections import OrderedDict
 
+from data_iterator import TextIterator
+
 import wmt14enfr
 import iwslt14zhen
 import openmt15zhen
@@ -600,7 +602,7 @@ def pred_probs(f_log_probs, prepare_data, options, iterator, verbose=True):
 
     n_done = 0
 
-    iterator.start()
+    #iterator.start()
     for x, y in iterator:
         n_done += len(x)
 
@@ -659,16 +661,21 @@ def train(dim_word=100,  # word vector dimensionality
           validFreq=1000,
           saveFreq=1000,  # save the parameters after every saveFreq updates
           sampleFreq=100,  # generate some samples after every sampleFreq updates
-          dataset='wmt14enfr',
-          dictionary=None,  # word dictionary
-          dictionary_src=None,  # word dictionary
+          datasets=[
+              '/data/lisatmp3/chokyun/europarl/europarl-v7.fr-en.en.tok',
+              '/data/lisatmp3/chokyun/europarl/europarl-v7.fr-en.fr.tok'],
+          valid_datasets=['../data/dev/newstest2011.en.tok',
+                          '../data/dev/newstest2011.fr.tok'],
+          dictionaries=[
+              '/data/lisatmp3/chokyun/europarl/europarl-v7.fr-en.en.tok.pkl',
+              '/data/lisatmp3/chokyun/europarl/europarl-v7.fr-en.fr.tok.pkl'],
           use_dropout=False,
           reload_=False,    # Contains the name of the file to reload or false
-          correlation_coeff=0.1,
           clip_c=0., 
           adversarial_mode='simple',
           adversarial_cost='default',
-          lambda_adv=1.):
+          lambda_adv=1.,
+          **kwargs):
 
 
     bad_counter = 0
@@ -683,17 +690,30 @@ def train(dim_word=100,  # word vector dimensionality
             saved_options = pkl.load(f)
             model_options.update(saved_options)
 
-    if model_options['dictionary']:
-        word_dict, word_idict = load_dictionary(model_options['dictionary'])
+    #if model_options['dictionary']:
+    word_dict, word_idict = load_dictionary(dictionaries[1])
 
-    if model_options['dictionary_src']:
-            word_dict_src, word_idict_src = load_dictionary(model_options['dictionary_src'])
+    #if model_options['dictionary_src']:
+    word_dict_src, word_idict_src = load_dictionary(dictionaries[0])
 
     print 'Loading data'
-    load_data, prepare_data = get_dataset(dataset)
-    train, valid, test = load_data(batch_size=batch_size)
-
-
+    # load_data, prepare_data = get_dataset(dataset)
+    # train, valid, test = load_data(batch_size=batch_size)
+    train = TextIterator(datasets[0], datasets[1],
+                         dictionaries[0], dictionaries[1],
+                         n_words_source=n_words_src, n_words_target=n_words,
+                         batch_size=batch_size,
+                         maxlen=maxlen)
+    valid = TextIterator(valid_datasets[0], valid_datasets[1],
+                         dictionaries[0], dictionaries[1],
+                         n_words_source=n_words_src, n_words_target=n_words,
+                         batch_size=valid_batch_size,
+                         maxlen=2000)
+    test = TextIterator(kwargs['other_datasets'][0], kwargs['other_datasets'][1],
+                        dictionaries[0], dictionaries[1],
+                        n_words_source=n_words_src, n_words_target=n_words,
+                        batch_size=valid_batch_size,
+                        maxlen=2000)
 
     print 'Building model'
     params = init_params(model_options)
@@ -823,7 +843,7 @@ def train(dim_word=100,  # word vector dimensionality
     for eidx in xrange(eidx_start,max_epochs):
         n_samples = 0
 
-        train.start()
+        #train.start()
         for x, y in train:
             n_samples += len(x)
             uidx += 1
@@ -1012,7 +1032,6 @@ def train(dim_word=100,  # word vector dimensionality
     return train_err, valid_err, test_err
 
 
-
 if __name__ == '__main__':
     train(dim_word=620,
           dim=1000,
@@ -1037,12 +1056,43 @@ if __name__ == '__main__':
           saveFreq=10000,
           sampleFreq=1000,
           dataset='stan',
-          dictionary='../data/data_vocab_europarl_en_de_h5/vocab.en.pkl',
-          dictionary_src='../data/data_vocab_europarl_en_de_h5/vocab.de.pkl',
+          dictionary='../../data/vocab_and_data_sub_europarl/vocab_sub_europarl.en.pkl',
+          dictionary_src='../../data/vocab_and_data_sub_europarl/vocab_sub_europarl.fr.pkl',
           use_dropout=False,
-          reload_='./saved_models/de-en/exp3/adversarial_noinit/lambda1_bscost/epoch1_nbUpd250000_model',
-          correlation_coeff=0.1,
+          reload_=False,
           clip_c=1.,
           adversarial_mode='complete',
           lambda_adv=5.)
 
+# if __name__ == '__main__':
+#     train(dim_word=620,
+#           dim=1000,
+#           encoder='gru',
+#           decoder='gru_cond',
+#           hiero=None,
+#           patience=10,
+#           max_epochs=100,
+#           dispFreq=10,
+#           decay_c=0.,
+#           alpha_c=0.,
+#           diag_c=0.,
+#           lrate=0.01,
+#           n_words_src=20000,
+#           n_words=20000,
+#           maxlen=50,
+#           optimizer='adadelta',
+#           batch_size=16,
+#           valid_batch_size=16,
+#           saveto='./saved_models/de-en/exp3/adversarial_noinit/lambda1_bscost/model.npz',
+#           validFreq=10000,
+#           saveFreq=10000,
+#           sampleFreq=1000,
+#           dataset='stan',
+#           dictionary='../data/data_vocab_europarl_en_de_h5/vocab.en.pkl',
+#           dictionary_src='../data/data_vocab_europarl_en_de_h5/vocab.de.pkl',
+#           use_dropout=False,
+#           reload_='./saved_models/de-en/exp3/adversarial_noinit/lambda1_bscost/epoch1_nbUpd250000_model',
+#           correlation_coeff=0.1,
+#           clip_c=1.,
+#           adversarial_mode='complete',
+#           lambda_adv=5.)

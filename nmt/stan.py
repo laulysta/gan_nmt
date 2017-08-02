@@ -70,10 +70,10 @@ def load_data(batch_size=128):
     Loads the dataset
     '''
 
-    path_src = '../data/data_vocab_europarl_en_de_h5/bin_train_de.shuf.h5'
-    path_trg = '../data/data_vocab_europarl_en_de_h5/bin_train_en.shuf.h5'
-    path_src_valid = '../data/data_vocab_europarl_en_de_h5/bin_valid_de.h5'
-    path_trg_valid = '../data/data_vocab_europarl_en_de_h5/bin_valid_en.h5'
+    path_src = '../../data/vocab_and_data_sub_europarl/binarized_sub_europarl-v7.fr-en.fr.h5'
+    path_trg = '../../data/vocab_and_data_sub_europarl/binarized_sub_europarl-v7.fr-en.en.h5'
+    path_src_valid = '../../data/vocab_and_data_sub_europarl/binarized_sub_europarl-v7.fr-en.fr.h5'
+    path_trg_valid = '../../data/vocab_and_data_sub_europarl/binarized_sub_europarl-v7.fr-en.en.h5'
 
     #############
     # LOAD DATA #
