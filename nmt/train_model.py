@@ -19,6 +19,7 @@ parser.add_argument('-m', '--model', required=False, default='baseline', help='e
 parser.add_argument('-bs', '--batch_size', required=False, default='16', help='Size of the batch')
 parser.add_argument('-out', '--out_dir', required=False, default='.', help='Output directory for the model')
 parser.add_argument('-p', '--patience', required=False, default='5', help='Patience')
+parser.add_argument('-lam', '--lambda', required=False, default='5', help='Lambda')
 
 #parser.add_argument('-ec', '--euclidean_coeff', default=0.1, type=float, help='Coefficient of the Euclidean distance in the cost (if coverage vector is used).')
 #parser.add_argument('-ca', '--covVec_in_attention', action="store_true", help='Coverage vector connected to the attentional part.')
@@ -37,8 +38,9 @@ model = str(args.model)
 batch_size = int(args.batch_size)
 reload_path = args.reload_path
 patience = int(args.patience)
+lambda_adv = int(args.lambda)
 
-list_options = [str(model), str(dim_word), str(dim_model), str(lr), str(batch_size), str(patience)]
+list_options = [str(model), str(dim_word), str(dim_model), str(lr), str(batch_size), str(patience), str(lambda_adv)]
 
 #Create names and folders
 ####################################################################################
@@ -192,7 +194,7 @@ trainerr, validerr, testerr = train(saveto=modelName,
                                     use_dropout=use_dropout,
                                     adversarial_mode='simple',
                                     adversarial_cost='default',
-                                    lambda_adv=5.)
+                                    lambda_adv=lambda_adv)
 
 # Prepare result line to append to result file
 line = "\t".join([str(dirModelName), str(dataset)] + list_options + [str(nb_epoch), str(nb_batch), str(validerr), str(testerr), str(validbleu), str(testbleu)]) + "\n"
