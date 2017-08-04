@@ -19,7 +19,7 @@ parser.add_argument('-m', '--model', required=False, default='baseline', help='e
 parser.add_argument('-bs', '--batch_size', required=False, default='16', help='Size of the batch')
 parser.add_argument('-out', '--out_dir', required=False, default='.', help='Output directory for the model')
 parser.add_argument('-p', '--patience', required=False, default='5', help='Patience')
-parser.add_argument('-lam', '--lambda', required=False, default='5', help='Lambda')
+parser.add_argument('-lam', '--lambda_adv', required=False, default='5', help='Lambda')
 
 #parser.add_argument('-ec', '--euclidean_coeff', default=0.1, type=float, help='Coefficient of the Euclidean distance in the cost (if coverage vector is used).')
 #parser.add_argument('-ca', '--covVec_in_attention', action="store_true", help='Coverage vector connected to the attentional part.')
@@ -38,7 +38,7 @@ model = str(args.model)
 batch_size = int(args.batch_size)
 reload_path = args.reload_path
 patience = int(args.patience)
-lambda_adv = int(args.lambda)
+lambda_adv = int(args.lambda_adv)
 
 list_options = [str(model), str(dim_word), str(dim_model), str(lr), str(batch_size), str(patience), str(lambda_adv)]
 
